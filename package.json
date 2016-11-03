@@ -1,0 +1,29 @@
+{
+  "name": "hybrid-image",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "clean": "rm -rf dist && mkdir dist",
+    "build:html": "cp src/*.html dist",
+    "watch:html": "onchange 'src/*.html' -v -- npm run build:html",
+    "build:ts": "tsc -p .",
+    "watch:ts": "tsc -p . --watch",
+    "build:css": "node-sass src/css -o dist/css",
+    "watch:css": "node-sass -w src/css -o dist/css",
+    "livereload": "livereload .",
+    "server": "http-server dist -p 8089 -o",
+    "build": "npm run clean && run-s build:*",
+    "watch": "npm run build && run-p watch:* server livereload"
+  },
+  "author": "@charliecm",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^0.9.0",
+    "livereload": "^0.6.0",
+    "node-sass": "^3.11.1",
+    "npm-run-all": "^3.1.1",
+    "onchange": "^3.0.2",
+    "typescript": "^2.0.6"
+  }
+}
