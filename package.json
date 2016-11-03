@@ -12,7 +12,7 @@
     "build:css": "node-sass src/css -o dist/css",
     "watch:css": "node-sass -w src/css -o dist/css",
     "livereload": "livereload .",
-    "server": "http-server dist -p 8089 -o",
+    "server": "http-server dist -p 8080 -o",
     "build": "npm run clean && run-s build:*",
     "watch": "npm run build && run-p watch:* server livereload"
   },
