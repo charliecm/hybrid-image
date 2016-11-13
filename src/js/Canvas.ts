@@ -3,72 +3,55 @@
  * Wrapper for canvas element.
  */
 
-import * as Helper from './Helper';
+import * as StackBlur from './StackBlur';
+import * as Filter from './Filter';
 
 export default class Canvas {
 	element:HTMLCanvasElement;
 	context:CanvasRenderingContext2D;
-	width:number = 300;
-	height:number = 200;
 	constructor() {
 		this.element = document.createElement('canvas');
 		let c:CanvasRenderingContext2D = this.context = this.element.getContext('2d');
-		c.fillStyle = 'blue';
-		c.fillRect(10, 10, 100, 100);
+	}
+	getImageData(img:HTMLImageElement):ImageData {
+		let canvas:HTMLCanvasElement = document.createElement('canvas'),
+			c:CanvasRenderingContext2D = canvas.getContext('2d'),
+			width:number = canvas.width = img.naturalWidth,
+			height:number = canvas.height = img.naturalHeight;
+		c.drawImage(img, 0, 0);
+		return c.getImageData(0, 0, width, height);
+	}
+	drawBlendedImage(imgA:HTMLImageElement, imgB:HTMLImageElement) {
+		let c:CanvasRenderingContext2D = this.context,
+			imgDataA:ImageData = this.getImageData(imgA),
+			imgDataB:ImageData = this.getImageData(imgB),
+			width:number = this.element.width = imgDataA.width,
+			height:number = this.element.height = imgDataA.height,
+			matrix:number[][] = [
+				[ -1, -1, -1 ],
+				[ -1, 8, -1 ],
+				[ -1, -1, -1 ]
+			],
+			monochromeA = Filter.apply(imgDataA, Filter.grayscale),
+			monochromeB = Filter.apply(imgDataB, Filter.grayscale),
+			lowPass = StackBlur.imageDataRGB(monochromeA, 0, 0, width, height, 6),
+			highPass = Filter.apply(monochromeB, Filter.convolve, matrix),
+			overlay = Filter.apply(lowPass, Filter.overlay, highPass);
+		c.putImageData(overlay, 0, 0);
 	}
 	drawImage(img:HTMLImageElement) {
 		let c:CanvasRenderingContext2D = this.context,
-			width:number = img.naturalWidth,
-			height:number = img.naturalHeight;
-		this.width = this.element.width = width;
-		this.height = this.element.height = height;
-		c.drawImage(img, 0, 0);
-		let imgData:ImageData = c.getImageData(0, 0, width, height);
-		c.putImageData(this.filter(imgData, this.darken, 2), 0, 0);
-	}
-	filter(src:ImageData, operation:Function, ...params):ImageData {
-		// https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
-		let width:number = src.width,
-			height:number = src.height,
-			result = new ImageData(src.width, src.height),
-			buf = new ArrayBuffer(width * height * 4),
-			buf8:Uint8ClampedArray = new Uint8ClampedArray(buf),
-			buf32:Uint32Array = new Uint32Array(buf);
-		for (let x:number = 0; x < width; x++) {
-			for (let y:number = 0; y < height; y++) {
-				let {r, g, b} = operation.apply(this, [x, y, src, ...params]);
-				r = Helper.clip(r);
-				g = Helper.clip(g);
-				b = Helper.clip(b);
-				buf32[x + y * width] = (255 << 24) | (b << 16) | (g << 8) | r;
-			}
-		}
-		result.data.set(buf8);
-		return result;
-	}
-	getRGB(x:number, y:number, src:ImageData) {
-		let i = (x + y * src.width) * 4,
-			data = src.data;
-		return {
-			r: data[i],
-			g: data[++i],
-			b: data[++i],
-			a: data[++i]
-		};
-	}
-	brighten(x:number, y:number, src:ImageData, intensity:number) {
-		let {r, g, b} = this.getRGB(x, y, src);
-		r *= intensity;
-		g *= intensity;
-		b *= intensity;
-		return {r, g, b};
-	}
-	darken(x:number, y:number, src:ImageData, intensity:number) {
-		let {r, g, b} = this.getRGB(x, y, src);
-		r /= intensity;
-		g /= intensity;
-		b /= intensity;
-		return {r, g, b};
+			imgData = this.getImageData(img),
+			width:number = this.element.width = imgData.width,
+			height:number = this.element.height = imgData.height,
+			matrix:number[][] = [
+				[ -1, -1, -1 ],
+				[ -1, 8, -1 ],
+				[ -1, -1, -1 ]
+			],
+			monochrome = Filter.apply(imgData, Filter.grayscale),
+			highPass = Filter.apply(monochrome, Filter.convolve, matrix);
+		c.putImageData(highPass, 0, 0);
 	}
 	getElement() {
 		return this.element;

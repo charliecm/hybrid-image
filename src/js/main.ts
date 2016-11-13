@@ -30,8 +30,11 @@ class Main {
 		canvasA.drawImage(this.imgA);
 		let canvasB:Canvas = new Canvas();
 		canvasB.drawImage(this.imgB);
+		let canvasC:Canvas = new Canvas();
+		canvasC.drawBlendedImage(this.imgA, this.imgB);
 		secCanvas.append(canvasA.getElement());
 		secCanvas.append(canvasB.getElement());
+		secCanvas.append(canvasC.getElement());
 		document.body.appendChild(secCanvas.getElement());
 	}
 }
