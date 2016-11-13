@@ -21,14 +21,18 @@ export function lowPass(img:ImageData, intensity:number):ImageData {
     return result;
 }
 
-export function highPass(img:ImageData):ImageData {
+export function highPass(img:ImageData, intensity:number):ImageData {
+    // Laplacian of guassian (LoG) - http://fourier.eng.hmc.edu/e161/lectures/gradient/node8.html
     let matrix:number[][] = [
-            [ -1, -1, -1 ],
-            [ -1, 8, -1 ],
-            [ -1, -1, -1 ]
+            [ 0, 0, 1, 0, 0 ],
+            [ 0, 1, 2, 1, 0 ],
+            [ 1, 2, -16, 2, 1 ],
+            [ 0, 1, 2, 1, 0 ],
+            [ 0, 0, 1, 0, 0 ]
         ],
         monochrome = Filter.apply(img, Filter.grayscale),
-        result = Filter.apply(monochrome, Filter.convolve, matrix);
+        blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, intensity), 
+        result = Filter.apply(blur, Filter.convolve, matrix, true);
     return result;
 }
 

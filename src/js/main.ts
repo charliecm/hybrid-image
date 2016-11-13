@@ -26,15 +26,16 @@ class Main {
 		if (++this.count < 2) {
 			return;
 		}
-		let section:Section = new Section('Canvas Images'),
-			sectionBody = section.body,
+		let secFrequencies:Section = new Section('Low/high Frequency Images'),
+			secResult:Section = new Section('Result'),
 			lowPass = Operation.lowPass(Operation.getImageData(this.imgA), 6),
-			highPass = Operation.highPass(Operation.getImageData(this.imgA)),
+			highPass = Operation.highPass(Operation.getImageData(this.imgB), 2),
 			hybrid = Operation.hybridImage(lowPass, highPass),
-			canvasA:Canvas = new Canvas(lowPass, sectionBody),
-			canvasB:Canvas = new Canvas(highPass, sectionBody),
-			canvasC:Canvas = new Canvas(hybrid, sectionBody);
-		document.body.appendChild(section.element);
+			canvasA:Canvas = new Canvas(lowPass, secFrequencies.body),
+			canvasB:Canvas = new Canvas(highPass, secFrequencies.body),
+			canvasC:Canvas = new Canvas(hybrid, secResult.body);
+		document.body.appendChild(secFrequencies.element);
+		document.body.appendChild(secResult.element);
 	}
 }
 let main = new Main();
