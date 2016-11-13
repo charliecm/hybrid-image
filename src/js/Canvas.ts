@@ -26,44 +26,49 @@ export default class Canvas {
 		let imgData:ImageData = c.getImageData(0, 0, width, height);
 		c.putImageData(this.filter(imgData, this.darken, 2), 0, 0);
 	}
-	filter(imgData:ImageData, operation:Function, ...params):ImageData {
+	filter(src:ImageData, operation:Function, ...params):ImageData {
 		// https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
-		let width:number = imgData.width;
-		let height:number = imgData.height;
-		let data:Uint8ClampedArray = imgData.data;
-		let buf = new ArrayBuffer(data.length);
-		let buf8:Uint8ClampedArray = new Uint8ClampedArray(buf);
-		let buf32:Uint32Array = new Uint32Array(buf);
+		let width:number = src.width,
+			height:number = src.height,
+			result = new ImageData(src.width, src.height),
+			buf = new ArrayBuffer(width * height * 4),
+			buf8:Uint8ClampedArray = new Uint8ClampedArray(buf),
+			buf32:Uint32Array = new Uint32Array(buf);
 		for (let x:number = 0; x < width; x++) {
 			for (let y:number = 0; y < height; y++) {
-				let i:number = (x + y * width),
-					j:number = i * 4,
-					r:number = data[j],
-					g:number = data[j + 1],
-					b:number = data[j + 2];
-				({r, g, b} = operation.apply(this, [r, g, b, ...params]));
+				let {r, g, b} = operation.apply(this, [x, y, src, ...params]);
 				r = Helper.clip(r);
 				g = Helper.clip(g);
 				b = Helper.clip(b);
-				buf32[i] = (255 << 24) | (b << 16) | (g << 8) | r;
+				buf32[x + y * width] = (255 << 24) | (b << 16) | (g << 8) | r;
 			}
 		}
-		imgData.data.set(buf8);
-		return imgData;
+		result.data.set(buf8);
+		return result;
 	}
-	brighten(r:number, g:number, b:number, intensity:number):Object {
+	getRGB(x:number, y:number, src:ImageData) {
+		let i = (x + y * src.width) * 4,
+			data = src.data;
 		return {
-			r: r * intensity,
-			g: g * intensity,
-			b: b
-		}
+			r: data[i],
+			g: data[++i],
+			b: data[++i],
+			a: data[++i]
+		};
 	}
-	darken(r:number, g:number, b:number, intensity:number):Object {
-		return {
-			r: r / intensity,
-			g: g / intensity,
-			b: b
-		}
+	brighten(x:number, y:number, src:ImageData, intensity:number) {
+		let {r, g, b} = this.getRGB(x, y, src);
+		r *= intensity;
+		g *= intensity;
+		b *= intensity;
+		return {r, g, b};
+	}
+	darken(x:number, y:number, src:ImageData, intensity:number) {
+		let {r, g, b} = this.getRGB(x, y, src);
+		r /= intensity;
+		g /= intensity;
+		b /= intensity;
+		return {r, g, b};
 	}
 	getElement() {
 		return this.element;
