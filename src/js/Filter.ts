@@ -5,8 +5,8 @@
 
 import * as Helper from './Helper';
 
+// https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
 export function apply(src:ImageData, operation:Function, ...params):ImageData {
-    // https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
     let width:number = src.width,
         height:number = src.height,
         result = new ImageData(src.width, src.height),
