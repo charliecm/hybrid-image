@@ -2,8 +2,37 @@
  * Main
  */
 
-function greeter() {
-	return "Hello world!";
-}
+import Canvas from './Canvas';
+import Section from './Section';
 
-document.body.innerHTML = greeter();
+class Main {
+	imgA:HTMLImageElement;
+	imgB:HTMLImageElement;
+	count:number = 0;
+	constructor() {
+		let imgA = this.imgA = document.createElement('img');
+		imgA.src = 'images/daniel-radcliffe.png';
+		let imgB = this.imgB = document.createElement('img');
+		imgB.src = 'images/elijah-wood.png';
+		let secInputs:Section = new Section('Input Images');
+		secInputs.append(imgA);
+		secInputs.append(imgB);
+		document.body.appendChild(secInputs.getElement());
+		imgA.onload = this.generateImage.bind(this);
+		imgB.onload = this.generateImage.bind(this);
+	}
+	generateImage() {
+		if (++this.count < 2) {
+			return;
+		}
+		let secCanvas:Section = new Section('Canvas Images');
+		let canvasA:Canvas = new Canvas();
+		canvasA.drawImage(this.imgA);
+		let canvasB:Canvas = new Canvas();
+		canvasB.drawImage(this.imgB);
+		secCanvas.append(canvasA.getElement());
+		secCanvas.append(canvasB.getElement());
+		document.body.appendChild(secCanvas.getElement());
+	}
+}
+let main = new Main();

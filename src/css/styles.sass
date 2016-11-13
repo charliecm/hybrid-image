@@ -2,5 +2,51 @@
  * Stylesheet
  */
 
+$section-color: #ddd
+$section-accordion-color: #666
+$section-accordion-size: 6px
+
+.clearfix:after
+    display: table
+    content: ''
+    clear: both
+
 body
-	font-family: "Helvetica Neue", Roboto, san-serif
+	font-family: "Inconsolata", "Helvetica Neue", Roboto, san-serif
+
+.section
+	&.-expanded
+		.section__heading:after
+			top: -2px
+			border-top-color: transparent
+			border-bottom-color: $section-accordion-color
+		.section__body
+			display: block
+
+
+.section__heading
+	background-color: $section-color
+	cursor: pointer
+	margin-bottom: 0
+	padding: 4px 6px 4px 6px
+	font-size: 0.75rem
+	&:after
+		content: ''
+		display: block
+		float: right
+		position: relative
+		top: $section-accordion-size - 2px
+		border: solid $section-accordion-size transparent
+		border-top-color: $section-accordion-color
+
+.section__body
+	@extend .clearfix
+	display: none
+	border: solid 1px $section-color
+	border-top: 0
+	img, canvas
+		margin: 2px 0 2px 2px
+		display: block
+		float: left
+		max-width: 200px
+		height: auto
