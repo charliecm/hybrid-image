@@ -67,13 +67,22 @@ export function invert(x:number, y:number, src:ImageData) {
     return {r, g, b};
 }
 
+export function subtract(x:number, y:number, srcA:ImageData, srcB:ImageData) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
+        {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
+        r:number = Math.abs(rA - rB),
+        g:number = Math.abs(gA - gB),
+        b:number = Math.abs(bA - bB);
+    return {r, g, b};
+}
+
 export function multiply(x:number, y:number, srcA:ImageData, srcB:ImageData) {
     let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
         {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
         max:number = 255,
-        r = (rA * rB) / max,
-        g = (gA * gB) / max,
-        b = (bA * bB) / max;
+        r:number = (rA * rB) / max,
+        g:number = (gA * gB) / max,
+        b:number = (bA * bB) / max;
     return {r, g, b};
 }
 
@@ -81,9 +90,9 @@ export function screen(x:number, y:number, srcA:ImageData, srcB:ImageData) {
     let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
         {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
         max:number = 255,
-        r = max * (1 - ((1 - rA/max) * (1 - rB/max))),
-        g = max * (1 - ((1 - gA/max) * (1 - gB/max))),
-        b = max * (1 - ((1 - bA/max) * (1 - bB/max)));
+        r:number = max * (1 - ((1 - rA/max) * (1 - rB/max))),
+        g:number = max * (1 - ((1 - gA/max) * (1 - gB/max))),
+        b:number = max * (1 - ((1 - bA/max) * (1 - bB/max)));
     return {r, g, b};
 }
 
@@ -91,16 +100,16 @@ export function overlay(x:number, y:number, srcA:ImageData, srcB:ImageData) {
     let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
         {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
         max:number = 255,
-        r = (rA >= max/2) ? (max * (1 - 2 * ((1 - rA/max) * (1 - rB/max)))) : 2 * ((rA * rB) / max),
-        g = (gA >= max/2) ? (max * (1 - 2 * ((1 - gA/max) * (1 - gB/max)))) : 2 * ((gA * gB) / max),
-        b = (bA >= max/2) ? (max * (1 - 2 * ((1 - bA/max) * (1 - bB/max)))) : 2 * ((bA * bB) / max);
+        r:number = (rA >= max/2) ? (max * (1 - 2 * ((1 - rA/max) * (1 - rB/max)))) : 2 * ((rA * rB) / max),
+        g:number = (gA >= max/2) ? (max * (1 - 2 * ((1 - gA/max) * (1 - gB/max)))) : 2 * ((gA * gB) / max),
+        b:number = (bA >= max/2) ? (max * (1 - 2 * ((1 - bA/max) * (1 - bB/max)))) : 2 * ((bA * bB) / max);
     return {r, g, b};
 }
 
-export function convolve(x:number, y:number, src:ImageData, matrix:number[][]) {
-    let r = 0,
-        g = 0,
-        b = 0,
+export function convolve(x:number, y:number, src:ImageData, matrix:number[][], shiftValues:boolean = false) {
+    let r:number = 0,
+        g:number = 0,
+        b:number = 0,
         radiusX = Math.floor(matrix[0].length / 2),
         radiusY = Math.floor(matrix.length / 2);
     for (let relX:number = -radiusX; relX <= radiusX; relX++) {
@@ -119,6 +128,11 @@ export function convolve(x:number, y:number, src:ImageData, matrix:number[][]) {
             g += relG;
             b += relB;
         }
+    }
+    if (shiftValues) {
+        r += 128;
+        g += 128;
+        b += 128;
     }
     return {r, g, b};
 }
