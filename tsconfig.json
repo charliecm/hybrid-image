@@ -1,11 +1,12 @@
 {
     "compilerOptions": {
-        "outDir": "./dist/js/",
-        "allowJs": true,
+        "module": "amd",
+        "outFile": "./dist/js/main.js",
+        "sourceMap": true,
         "target": "es5"
     },
     "include": [
-        "./src/js/**/*"
+        "./src/js/**/*.ts"
     ],
     "exclude": [
         "node_modules",

@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "clean": "rm -rf dist && mkdir dist",
-    "build:html": "cp src/*.html dist",
-    "watch:html": "onchange 'src/*.html' -v -- npm run build:html",
+    "build:copy": "copy src/**/*.{html,jpg,png,ico} dist",
+    "watch:copy": "onchange 'src/*.{html,jpg,png,ico}' -v -- npm run build:copy",
     "build:ts": "tsc -p .",
     "watch:ts": "tsc -p . --watch",
     "build:css": "node-sass src/css -o dist/css",
     "watch:css": "node-sass -w src/css -o dist/css",
+    "build:require": "cp src/js/require.js dist/js",
     "livereload": "livereload .",
     "server": "http-server dist -p 8080 -o",
     "build": "npm run clean && run-s build:*",
@@ -19,6 +20,7 @@
   "author": "@charliecm",
   "license": "MIT",
   "devDependencies": {
+    "copy": "^0.3.0",
     "http-server": "^0.9.0",
     "livereload": "^0.6.0",
     "node-sass": "^3.11.1",
