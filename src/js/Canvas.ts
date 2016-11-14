@@ -6,14 +6,12 @@
 export default class Canvas {
 	private ele:HTMLCanvasElement;
 	private context:CanvasRenderingContext2D;
-	constructor(img?:ImageData, parent?:HTMLElement) {
+	constructor(img?:ImageData, isSmall:boolean = false) {
 		let ele = this.ele = document.createElement('canvas');
 		this.context = ele.getContext('2d');
+		ele.className = 'canvas' + ((isSmall) ? ' canvas--small' : '');
 		if (img) {
 			this.drawImage(img);
-		}
-		if (parent) {
-			parent.appendChild(ele);
 		}
 	}
 	drawImage(img:ImageData) {

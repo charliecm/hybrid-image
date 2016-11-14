@@ -22,7 +22,7 @@ export default class HybridGenerator {
             secInput:Section = this.secInputs = new Section('Input images'),
             secFrequencies:Section = this.secFrequencies = new Section('Low/high frequency images'),
 			secResult:Section = this.secResult = new Section('Result');
-		secInput.addUpload('Select two images with same width and height', this.handleUpload.bind(this));
+		secInput.addUpload('Choose 2 images with same width and height', this.handleUpload.bind(this));
 		secInput.addButton('Swap Images', this.swap.bind(this));
         secInput.addButton('Reset to Demo', this.showDemo.bind(this));
         title.textContent = 'Hybrid Image Generator';
@@ -42,26 +42,39 @@ export default class HybridGenerator {
 			lowPass = Operation.lowPass(Operation.getImageData(imgA), lowPassInit),
 			highPass = Operation.highPass(Operation.getImageData(imgB), highPassInit),
 			hybrid = Operation.hybridImage(lowPass, highPass),
-			canvasA:Canvas = new Canvas(lowPass, secFrequencies.body),
-			canvasB:Canvas = new Canvas(highPass, secFrequencies.body),
-			canvasC:Canvas = new Canvas(hybrid, secResult.body);
+			canvasLowPass:Canvas = new Canvas(lowPass),
+			canvasHighPass:Canvas = new Canvas(highPass),
+			canvasResult:Canvas = new Canvas(hybrid),
+            canvasResultSmall:Canvas = new Canvas(hybrid, true);
         // Add low-pass radius input
 		secFrequencies.addParameter('Low-pass radius', lowPassInit, 30, (val) => {
 			lowPass = Operation.lowPass(Operation.getImageData(imgA), val);
 			hybrid = Operation.hybridImage(lowPass, highPass);
-			canvasA.drawImage(lowPass);
-			canvasC.drawImage(hybrid);
+			canvasLowPass.drawImage(lowPass);
+			canvasResult.drawImage(hybrid);
+            canvasResultSmall.drawImage(hybrid);
 		});
         // Add high-pass radius input
 		secFrequencies.addParameter('High-pass radius', highPassInit, 30, (val) => {
 			highPass = Operation.highPass(Operation.getImageData(imgB), val);
 			hybrid = Operation.hybridImage(lowPass, highPass);
-			canvasB.drawImage(highPass);
-			canvasC.drawImage(hybrid);
+			canvasHighPass.drawImage(highPass);
+			canvasResult.drawImage(hybrid);
+            canvasResultSmall.drawImage(hybrid);
 		});
+        // Add save image  button
+        secResult.addButton('Save Image', () => {
+            let url = canvasResult.element.toDataURL("image/png").replace("image/png", "image/octet-stream");
+            window.location.href = url;
+        });
         // Display sections
+        imgA.className = imgB.className = 'canvas';
         secInput.addItem(imgA);
 		secInput.addItem(imgB);
+        secFrequencies.addItem(canvasLowPass.element);
+        secFrequencies.addItem(canvasHighPass.element);
+        secResult.addItem(canvasResult.element);
+        secResult.addItem(canvasResultSmall.element);
 		document.body.appendChild(secFrequencies.element);
 		document.body.appendChild(secResult.element);
 	}

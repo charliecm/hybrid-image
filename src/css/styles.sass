@@ -80,13 +80,6 @@ body
 	border-top: 0
 	border-radius: 0 0 rem(3px) rem(3px)
 	background-color: $gray-2
-	img, canvas
-		margin-right: rem(2px)
-		margin-bottom: rem(2px)
-		display: block
-		float: left
-		max-width: rem(200px)
-		height: auto
 
 // ----------------------------------------------------------------------------
 // Section control
@@ -102,6 +95,7 @@ body
 	cursor: ew-resize
 
 .control__label
+	flex-shrink: 0
 	margin-right: 0.5rem
 	margin-top: rem(2px)
 	font-size: 0.75rem
@@ -111,6 +105,7 @@ body
 	position: relative
 	overflow: hidden
 	border: 0
+	box-shadow: 1px 1px 1px rgba($gray-1, 0.35)
 	border-radius: rem(2px)
 	padding: rem(1px) rem(6px) 0 rem(6px)
 	height: rem(24px)
@@ -131,7 +126,6 @@ body
 .control__upload
 	@extend %control__input
 	width: 11rem
-	height: rem(22px)
 	&:focus
 		outline: 0
 
@@ -141,3 +135,18 @@ body
 		top: rem(2px)
 	&:focus
 		outline: 0
+
+// ----------------------------------------------------------------------------
+// Canvas
+// ----------------------------------------------------------------------------
+
+.canvas
+	margin-right: rem(2px)
+	margin-bottom: rem(2px)
+	display: block
+	float: left
+	max-width: rem(200px)
+	height: auto
+
+.canvas--small
+	max-width: rem(48px)
