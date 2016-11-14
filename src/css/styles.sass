@@ -8,12 +8,7 @@
 
 $base-em: 16px
 
-$gray-1: #111
-$gray-2: #333
-$gray-3: #555
-$gray-4: #666
-
-$section-color: $gray-2
+$section-color: #333
 $section-accordion-color: #999
 $section-accordion-size: 6px
 
@@ -25,8 +20,9 @@ $section-accordion-size: 6px
 // ----------------------------------------------------------------------------
 
 body
-	margin: 0.5rem 0.5rem 2rem 0.5rem
-	background-color: $gray-1
+	margin: 0.5rem auto 2rem auto
+	max-width: rem(1024px)
+	background-color: #111
 	font-family: 'Helvetica Neue', Roboto, san-serif
 	color: white
 
@@ -50,11 +46,11 @@ body
 
 .section__heading
 	background-color: $section-color
-	cursor: pointer
 	margin-bottom: 0
 	border-radius: rem(3px) rem(3px) 0 0
-	padding: rem(6px)
+	padding: rem(6px) rem(12px) rem(6px) rem(8px)
 	font-size: 1rem
+	cursor: pointer
 	&:after
 		content: ''
 		display: block
@@ -64,22 +60,21 @@ body
 		border: solid $section-accordion-size transparent
 		border-top-color: $section-accordion-color
 	&:hover
-		background-color: $gray-3
+		background-color: #3C3C3C
 
 .section__controlbar
 	display: flex
 	flex-wrap: wrap
 	background-color: $section-color
-	padding: 0 rem(6px)
+	padding: 0 rem(12px) 0 rem(8px)
 
 .section__body
 	@extend .clearfix
 	display: none
-	padding: rem(2px)
-	border: solid 1px $section-color
 	border-top: 0
 	border-radius: 0 0 rem(3px) rem(3px)
-	background-color: $gray-2
+	padding: rem(4px) rem(8px) rem(6px) rem(8px)
+	background-color: #292929
 
 // ----------------------------------------------------------------------------
 // Section control
@@ -89,7 +84,7 @@ body
 	display: flex
 	flex-wrap: nowrap
 	align-items: center
-	margin: rem(4px) rem(12px) rem(4px) 0
+	margin: rem(4px) rem(8px) rem(4px) 0
 
 .control--value
 	cursor: ew-resize
@@ -97,7 +92,7 @@ body
 .control__label
 	flex-shrink: 0
 	margin-right: 0.5rem
-	margin-top: rem(2px)
+	margin-top: rem(1px)
 	font-size: 0.75rem
 	pointer-events: none
 
@@ -105,15 +100,14 @@ body
 	position: relative
 	overflow: hidden
 	border: 0
-	box-shadow: 1px 1px 1px rgba($gray-1, 0.35)
 	border-radius: rem(2px)
-	padding: rem(1px) rem(6px) 0 rem(6px)
+	padding: 0 rem(8px)
 	height: rem(24px)
-	background-color: $gray-3
+	background-color: #555
 	font-size: 0.75rem
 	color: white
 	&:hover
-		background-color: $gray-4
+		background-color: #666
 
 .control__input
 	@extend %control__input
@@ -131,6 +125,7 @@ body
 
 .control__button
 	@extend %control__input
+	cursor: pointer
 	&:active
 		top: rem(2px)
 	&:focus
