@@ -6,86 +6,125 @@
 import * as Helper from './Helper'
 
 export default class Section {
+
 	private ele:HTMLElement;
-	private headingEle:HTMLElement;
-	private bodyEle:HTMLElement;
-	private controlBar:HTMLElement;
+	private eleHeading:HTMLElement;
+	private eleBody:HTMLElement;
+	private eleControlBar:HTMLElement;
 	private controls = [];
 	private isExpanded:boolean = true;
+
+	/**
+	 * @param {string} title Title displayed in heading.
+	 */
 	constructor(title:string) {
 		let ele = this.ele = document.createElement('section'),
-			headingEle = this.headingEle = document.createElement('h2'),
-			controlBar = this.controlBar = document.createElement('div'),
-			bodyEle = this.bodyEle = document.createElement('div');
+			eleHeading = this.eleHeading = document.createElement('h2'),
+			eleControlBar = this.eleControlBar = document.createElement('div'),
+			eleBody = this.eleBody = document.createElement('div');
 		// Container
 		ele.className = 'section -expanded';
 		// Heading
-		headingEle.textContent = title;
-		headingEle.className = 'section__heading';
-		headingEle.addEventListener('click', this.toggle.bind(this));
-		ele.appendChild(headingEle);
+		eleHeading.textContent = title;
+		eleHeading.className = 'section__heading';
+		eleHeading.addEventListener('click', this.toggle.bind(this));
+		ele.appendChild(eleHeading);
 		// Control bar
-		controlBar.className = 'section__controlbar';
-		ele.appendChild(controlBar);
+		eleControlBar.className = 'section__controlbar';
+		ele.appendChild(eleControlBar);
 		// Body
-		bodyEle.className = 'section__body';
-		ele.appendChild(bodyEle);
+		eleBody.className = 'section__body';
+		ele.appendChild(eleBody);
 	}
+
+	/**
+	 * Expands the accordion.
+	 */
 	expand() {
 		this.ele.classList.add('-expanded');
 		this.isExpanded = true;
 	}
+	
+	/**
+	 * Collapses the accordion.
+	 */
 	collapse() {
 		this.ele.classList.remove('-expanded');
 		this.isExpanded = false;
 	}
+
+	/**
+	 * Toggles the accordion.
+	 */
 	toggle() {
 		(this.isExpanded) ? this.collapse() : this.expand();
 	}
+
+	/**
+	 * Adds an element to the body.
+	 */
 	addItem(ele:HTMLElement) {
-		this.bodyEle.appendChild(ele);
+		this.eleBody.appendChild(ele);
 	}
+
+	/**
+	 * Clear all elements in the body.
+	 */
 	clearItems() {
-		let ele = this.bodyEle;
+		let ele = this.eleBody;
 		while (ele.firstChild) {
 		    ele.removeChild(ele.firstChild);
 		}
 	}
-	addButton(name:string, onClick:EventListenerOrEventListenerObject) {
-		let element:HTMLFormElement = document.createElement('form'),
-			input:HTMLInputElement = document.createElement('input'),
+
+	/**
+	 * Adds a button to the control bar.
+	 * @param {string} label Label of the button.
+	 * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
+	 */
+	addButton(label:string, onClick:EventListenerOrEventListenerObject) {
+		let ele:HTMLFormElement = document.createElement('form'),
+			eleInput:HTMLInputElement = document.createElement('input'),
 			destroy:Function = () => {
-				input.removeEventListener('click', onClick);
-				element.parentNode.removeChild(element);
+				eleInput.removeEventListener('click', onClick);
+				ele.parentNode.removeChild(ele);
 			};
 		// Container
-		element.className = 'control';
+		ele.className = 'control';
 		// Input
-		input.className = 'control__button';
-		input.type = 'button';
-		input.value = name;
-		input.addEventListener('click', onClick);
-		element.appendChild(input);
+		eleInput.className = 'control__button';
+		eleInput.type = 'button';
+		eleInput.value = label;
+		eleInput.addEventListener('click', onClick);
+		ele.appendChild(eleInput);
 		// Add to DOM and model
-		this.controlBar.appendChild(element);
+		this.eleControlBar.appendChild(ele);
 		this.controls.push({
-			name,
-			element,
+			element: ele,
+			label,
 			destroy
 		});
 	}
-	addParameter(name:string, initial:number, max:number, onChange:Function) {
-		let element:HTMLFormElement = document.createElement('form'),
-			label:HTMLLabelElement = document.createElement('label'),
-			input:HTMLInputElement = document.createElement('input'),
+
+	/**
+	 * Adds a parameter value input to the control bar.
+	 * @param {string} label Label for the input.
+	 * @param {number} initial Initial value.
+	 * @param {number} max Maximum value.
+	 * @param {Function} onChange Event handler for input value change.
+	 */
+	addParameter(label:string, initial:number, max:number, onChange:Function) {
+		let ele:HTMLFormElement = document.createElement('form'),
+			eleLabel:HTMLLabelElement = document.createElement('label'),
+			eleInput:HTMLInputElement = document.createElement('input'),
 			startX:number = 0,
 			startVal:number = 0,
 			debounced:Function = Helper.debounce(onChange, 500),
 			onDrag:EventListenerOrEventListenerObject = (event:MouseEvent) => {
 				// Change value incrementally on drag
 				let dx = event.x - startX;
-				input.value = Helper.clamp(startVal + Math.floor(dx / 10), 0, max).toString();
-				debounced(parseInt(input.value));
+				eleInput.value = Helper.clamp(startVal + Math.floor(dx / 10), 0, max).toString();
+				debounced(parseInt(eleInput.value));
 			},
 			onRelease:EventListenerOrEventListenerObject = () => {
 				window.removeEventListener('mousemove', onDrag);
@@ -94,74 +133,84 @@ export default class Section {
 			onMouseDown:EventListenerOrEventListenerObject = (event:MouseEvent) => {
 				// Initiate drag
 				startX = event.x;
-				startVal = parseInt(input.value);
+				startVal = parseInt(eleInput.value);
 				window.addEventListener('mousemove', onDrag);
 				window.addEventListener('mouseup', onRelease);
 			},
 			onInput:EventListenerOrEventListenerObject = () => {
-				debounced(parseInt(input.value));
+				debounced(parseInt(eleInput.value));
 			},
 			destroy:Function = () => {
-				element.removeEventListener('mousedown', onMouseDown);
-				input.removeEventListener('input', onInput);
+				ele.removeEventListener('mousedown', onMouseDown);
+				eleInput.removeEventListener('input', onInput);
 				window.removeEventListener('mousemove', onDrag);
 				window.removeEventListener('mouseup', onRelease);
 				debounced = null;
-				element.parentNode.removeChild(element);
+				ele.parentNode.removeChild(ele);
 			};
 		// Container
-		element.className = 'control control--value';
-		element.addEventListener('mousedown', onMouseDown);
+		ele.className = 'control control--value';
+		ele.addEventListener('mousedown', onMouseDown);
 		// Label
-		label.className = 'control__label';
-		label.textContent = name;
-		element.appendChild(label);
+		eleLabel.className = 'control__label';
+		eleLabel.textContent = label;
+		ele.appendChild(eleLabel);
 		// Input
-		input.className = 'control__input';
-		input.type = 'number';
-		input.value = initial.toString();
-		input.max = max.toString();
-		input.addEventListener('input', onInput);
-		element.appendChild(input);
+		eleInput.className = 'control__input';
+		eleInput.type = 'number';
+		eleInput.value = initial.toString();
+		eleInput.max = max.toString();
+		eleInput.addEventListener('input', onInput);
+		ele.appendChild(eleInput);
 		// Add to DOM and model
-		this.controlBar.appendChild(element);
+		this.eleControlBar.appendChild(ele);
 		this.controls.push({
-			name,
-			element,
+			element: ele,
+			label,
 			destroy
 		});
 	}
-	addUpload(name:string, onUpload:Function) {
-		let element:HTMLFormElement = document.createElement('form'),
-			label:HTMLLabelElement = document.createElement('label'),
-			input:HTMLInputElement = document.createElement('input'),
+
+	/**
+	 * Adds a file upload input to the control bar.
+	 * @param {string} label Label for the input.
+	 * @param {Function} onUpload Event handler for file upload.
+	 */
+	addUpload(label:string, onUpload:Function) {
+		let ele:HTMLFormElement = document.createElement('form'),
+			eleLabel:HTMLLabelElement = document.createElement('label'),
+			eleInput:HTMLInputElement = document.createElement('input'),
 			onChange:EventListenerOrEventListenerObject = function() {
 				onUpload(this.files);
 			},
 			destroy:Function = () => {
-				input.removeEventListener('change', onChange);
-				element.parentNode.removeChild(element);
+				eleInput.removeEventListener('change', onChange);
+				ele.parentNode.removeChild(ele);
 			};
 		// Container
-		element.className = 'control';
+		ele.className = 'control';
 		// Label
-		label.className = 'control__label';
-		label.textContent = name;
-		element.appendChild(label);
+		eleLabel.className = 'control__label';
+		eleLabel.textContent = label;
+		ele.appendChild(eleLabel);
 		// Input
-		input.className = 'control__upload';
-		input.type = 'file';
-		input.multiple = true;
-		input.addEventListener('change', onChange);
-		element.appendChild(input);
+		eleInput.className = 'control__upload';
+		eleInput.type = 'file';
+		eleInput.multiple = true;
+		eleInput.addEventListener('change', onChange);
+		ele.appendChild(eleInput);
 		// Add to DOM and model
-		this.controlBar.appendChild(element);
+		this.eleControlBar.appendChild(ele);
 		this.controls.push({
-			name,
-			element,
+			element: ele,
+			label,
 			destroy
 		});
 	}
+
+	/**
+	 * Cleans up and removes the section from document.
+	 */
 	destroy() {
 		let ele = this.ele,
 			inputs = this.controls;
@@ -173,10 +222,13 @@ export default class Section {
 		}
 		this.clearItems();
 	}
+
 	get element() {
 		return this.ele;
 	}
+
 	get body() {
-		return this.bodyEle;
+		return this.eleBody;
 	}
+
 }

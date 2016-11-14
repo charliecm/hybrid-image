@@ -5,7 +5,13 @@
 
 import * as Helper from './Helper';
 
-// https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
+/**
+ * Applies a filter to a source image.
+ * https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
+ * @param {ImageData} src Source image buffer.
+ * @param {Function} operation Filter operation to perform.
+ * @param {arguments} params Parameters to pass into operation function.
+ */
 export function apply(src:ImageData, operation:Function, ...params):ImageData {
     let width:number = src.width,
         height:number = src.height,
@@ -26,7 +32,13 @@ export function apply(src:ImageData, operation:Function, ...params):ImageData {
     return result;
 }
 
-export function getRGB(x:number, y:number, src:ImageData) {
+/**
+ * Returns the RGBA data of a pixel.
+ * @param {ImageData} src Source image.
+ * @param {number} x Horizontal position in image.
+ * @param {number} y Vertical position in image.
+ */
+export function getRGB(src:ImageData, x:number, y:number) {
     let i = (x + y * src.width) * 4,
         data = src.data;
     return {
@@ -37,75 +49,55 @@ export function getRGB(x:number, y:number, src:ImageData) {
     };
 }
 
+/**
+ * Brightens a pixel.
+ * @param {number} intensity Multiplication intensity.
+ */
 export function brighten(x:number, y:number, src:ImageData, intensity:number) {
-    let {r, g, b} = this.getRGB(x, y, src);
+    let {r, g, b} = this.getRGB(src, x, y);
     r *= intensity;
     g *= intensity;
     b *= intensity;
     return {r, g, b};
 }
 
+/**
+ * Darkens a pixel.
+ * @param {number} intensity Division intensity.
+ */
 export function darken(x:number, y:number, src:ImageData, intensity:number) {
-    let {r, g, b} = this.getRGB(x, y, src);
+    let {r, g, b} = this.getRGB(src, x, y);
     r /= intensity;
     g /= intensity;
     b /= intensity;
     return {r, g, b};
 }
 
+/**
+ * Converts pixel to grayscale.
+ */
 export function grayscale(x:number, y:number, src:ImageData) {
-    let {r, g, b} = this.getRGB(x, y, src);
+    let {r, g, b} = this.getRGB(src, x, y);
     r = g = b = (r + g + b) / 3;
     return {r, g, b};
 }
 
+/**
+ * Inverts pixel value.
+ */
 export function invert(x:number, y:number, src:ImageData) {
-    let {r, g, b} = this.getRGB(x, y, src);
+    let {r, g, b} = this.getRGB(src, x, y);
     r = 255 - r;
     g = 255 - g;
     b = 255 - b;
     return {r, g, b};
 }
 
-export function subtract(x:number, y:number, srcA:ImageData, srcB:ImageData) {
-    let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
-        {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
-        r:number = Math.abs(rA - rB),
-        g:number = Math.abs(gA - gB),
-        b:number = Math.abs(bA - bB);
-    return {r, g, b};
-}
-
-export function multiply(x:number, y:number, srcA:ImageData, srcB:ImageData) {
-    let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
-        {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
-        max:number = 255,
-        r:number = (rA * rB) / max,
-        g:number = (gA * gB) / max,
-        b:number = (bA * bB) / max;
-    return {r, g, b};
-}
-
-export function screen(x:number, y:number, srcA:ImageData, srcB:ImageData) {
-    let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
-        {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
-        max:number = 255,
-        r:number = max * (1 - ((1 - rA/max) * (1 - rB/max))),
-        g:number = max * (1 - ((1 - gA/max) * (1 - gB/max))),
-        b:number = max * (1 - ((1 - bA/max) * (1 - bB/max)));
-    return {r, g, b};
-}
-
-export function overlay(x:number, y:number, srcA:ImageData, srcB:ImageData) {
-    let {r:rA, g:gA, b:bA} = this.getRGB(x, y, srcA),
-        {r:rB, g:gB, b:bB} = this.getRGB(x, y, srcB),
-        max:number = 255,
-        r:number = (rA >= max/2) ? (max * (1 - 2 * ((1 - rA/max) * (1 - rB/max)))) : 2 * ((rA * rB) / max),
-        g:number = (gA >= max/2) ? (max * (1 - 2 * ((1 - gA/max) * (1 - gB/max)))) : 2 * ((gA * gB) / max),
-        b:number = (bA >= max/2) ? (max * (1 - 2 * ((1 - bA/max) * (1 - bB/max)))) : 2 * ((bA * bB) / max);
-    return {r, g, b};
-}
-
+/**
+ * Performs a convolution on a pixel.
+ * @param {number[][]} matrix Matrix to apply.
+ * @param {boolean} shiftValues Shifts output value to the middle.
+ */
 export function convolve(x:number, y:number, src:ImageData, matrix:number[][], shiftValues:boolean = false) {
     let r:number = 0,
         g:number = 0,
@@ -120,7 +112,7 @@ export function convolve(x:number, y:number, src:ImageData, matrix:number[][], s
                 continue;
             }
             let multiplier = matrix[relX + radiusX][relY + radiusY],
-                {r:relR, g:relG, b:relB} = this.getRGB(xx, yy, src);
+                {r:relR, g:relG, b:relB} = this.getRGB(src, xx, yy);
             relR *= multiplier;
             relG *= multiplier;
             relB *= multiplier;
@@ -134,5 +126,56 @@ export function convolve(x:number, y:number, src:ImageData, matrix:number[][], s
         g += 128;
         b += 128;
     }
+    return {r, g, b};
+}
+
+/**
+ * Subtracts a pixel value symmetrically from two sources.
+ */
+export function subtract(x:number, y:number, srcA:ImageData, srcB:ImageData) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
+        {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
+        r:number = Math.abs(rA - rB),
+        g:number = Math.abs(gA - gB),
+        b:number = Math.abs(bA - bB);
+    return {r, g, b};
+}
+
+/**
+ * Multiplies a pixel value from two sources.
+ */
+export function multiply(x:number, y:number, srcA:ImageData, srcB:ImageData) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
+        {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
+        max:number = 255,
+        r:number = (rA * rB) / max,
+        g:number = (gA * gB) / max,
+        b:number = (bA * bB) / max;
+    return {r, g, b};
+}
+
+/**
+ * Performs a screen filter on a pixel from two sources.
+ */
+export function screen(x:number, y:number, srcA:ImageData, srcB:ImageData) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
+        {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
+        max:number = 255,
+        r:number = max * (1 - ((1 - rA/max) * (1 - rB/max))),
+        g:number = max * (1 - ((1 - gA/max) * (1 - gB/max))),
+        b:number = max * (1 - ((1 - bA/max) * (1 - bB/max)));
+    return {r, g, b};
+}
+
+/**
+ * Performs an overlay filter (screen/multiply) on a pixel from two sources.
+ */
+export function overlay(x:number, y:number, srcA:ImageData, srcB:ImageData) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
+        {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
+        max:number = 255,
+        r:number = (rA >= max/2) ? (max * (1 - 2 * ((1 - rA/max) * (1 - rB/max)))) : 2 * ((rA * rB) / max),
+        g:number = (gA >= max/2) ? (max * (1 - 2 * ((1 - gA/max) * (1 - gB/max)))) : 2 * ((gA * gB) / max),
+        b:number = (bA >= max/2) ? (max * (1 - 2 * ((1 - bA/max) * (1 - bB/max)))) : 2 * ((bA * bB) / max);
     return {r, g, b};
 }

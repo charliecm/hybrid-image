@@ -1,16 +1,30 @@
 /**
- * Help Functions
+ * Helper
+ * A set of helper functions.
  */
 
+/**
+ * Clips a value to 8-bit color range.
+ * @param {number} val Color value.
+ */
 export function clip(val:number):number {
     return Math.min(Math.max(val, 0), 255);
 }
 
+/**
+ * Clamps a value within the specific number range.
+ * @param {number} val Value.
+ * @param {number} min Minimum value.
+ * @param {number} max Maximum value.
+ */
 export function clamp(val:number, min:number, max:number):number {
     return Math.min(Math.max(val, min), max);
 }
 
-// https://gist.github.com/steveosoule/8c98a41d20bb77ae62f7
+/**
+ * Debounce
+ * https://gist.github.com/steveosoule/8c98a41d20bb77ae62f7
+ */
 export function debounce(func:Function, wait:number, immediate?:boolean):Function {
 	let timeout;
 	return function() {

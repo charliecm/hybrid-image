@@ -8,7 +8,9 @@ import * as Operation from './Operation';
 import Section from './Section';
 
 export default class HybridGenerator {
-    private element:HTMLElement;
+    
+    private ele:HTMLElement;
+    private eleBody:HTMLElement
 	private imgA:HTMLImageElement;
 	private imgB:HTMLImageElement;
 	private secInputs:Section;
@@ -16,21 +18,29 @@ export default class HybridGenerator {
 	private secResult:Section;
     private count:number = 0;
     private readonly countTotal:number = 2;
+
 	constructor() {
-        let element:HTMLElement = this.element = document.createElement('article'),
-            title:HTMLHeadingElement = document.createElement('h1'),
+        let ele:HTMLElement = this.ele = document.createElement('article'),
+            eleTitle:HTMLHeadingElement = document.createElement('h1'),
+            eleBody:HTMLElement = this.eleBody = document.createElement('div'),
             secInput:Section = this.secInputs = new Section('Input images'),
             secFrequencies:Section = this.secFrequencies = new Section('Low/high frequency images'),
 			secResult:Section = this.secResult = new Section('Result');
-		secInput.addUpload('Choose 2 images with same width and height', this.handleUpload.bind(this));
+        eleTitle.textContent = 'Hybrid Image Generator';
+        eleBody.className = 'sections';
+        secInput.addUpload('Choose 2 images with same width and height', this.handleUpload.bind(this));
 		secInput.addButton('Swap Images', this.swap.bind(this));
         secInput.addButton('Reset to Demo', this.showDemo.bind(this));
-        title.textContent = 'Hybrid Image Generator';
-        element.appendChild(title);
-        element.appendChild(secInput.element);
-		document.body.appendChild(element);
+        eleBody.appendChild(secInput.element);
+        ele.appendChild(eleTitle);
+        ele.appendChild(eleBody);
+		document.body.appendChild(ele);
         this.showDemo();
 	}
+
+    /**
+     * Generates the hybrid image and creates the UI for controlling the output.
+     */
     private generateImage() {
         let imgA = this.imgA,
             imgB = this.imgB,
@@ -42,46 +52,55 @@ export default class HybridGenerator {
 			lowPass = Operation.lowPass(Operation.getImageData(imgA), lowPassInit),
 			highPass = Operation.highPass(Operation.getImageData(imgB), highPassInit),
 			hybrid = Operation.hybridImage(lowPass, highPass),
-			canvasLowPass:Canvas = new Canvas(lowPass),
-			canvasHighPass:Canvas = new Canvas(highPass),
-			canvasResult:Canvas = new Canvas(hybrid),
-            canvasResultSmall:Canvas = new Canvas(hybrid, true);
+			canvLowPass:Canvas = new Canvas(lowPass),
+			canvHighPass:Canvas = new Canvas(highPass),
+			canvResult:Canvas = new Canvas(hybrid),
+            canvResultSmall:Canvas = new Canvas(hybrid, true);
         // Add low-pass radius input
 		secFrequencies.addParameter('Low-pass radius', lowPassInit, 30, (val) => {
 			lowPass = Operation.lowPass(Operation.getImageData(imgA), val);
 			hybrid = Operation.hybridImage(lowPass, highPass);
-			canvasLowPass.drawImage(lowPass);
-			canvasResult.drawImage(hybrid);
-            canvasResultSmall.drawImage(hybrid);
+			canvLowPass.drawImage(lowPass);
+			canvResult.drawImage(hybrid);
+            canvResultSmall.drawImage(hybrid);
 		});
         // Add high-pass radius input
 		secFrequencies.addParameter('High-pass radius', highPassInit, 30, (val) => {
 			highPass = Operation.highPass(Operation.getImageData(imgB), val);
 			hybrid = Operation.hybridImage(lowPass, highPass);
-			canvasHighPass.drawImage(highPass);
-			canvasResult.drawImage(hybrid);
-            canvasResultSmall.drawImage(hybrid);
+			canvHighPass.drawImage(highPass);
+			canvResult.drawImage(hybrid);
+            canvResultSmall.drawImage(hybrid);
 		});
         // Add save image  button
         secResult.addButton('Save Image', () => {
-            let url = canvasResult.element.toDataURL("image/png").replace("image/png", "image/octet-stream");
+            let url = canvResult.element.toDataURL("image/png").replace("image/png", "image/octet-stream");
             window.location.href = url;
         });
         // Display sections
         imgA.className = imgB.className = 'canvas';
         secInput.addItem(imgA);
 		secInput.addItem(imgB);
-        secFrequencies.addItem(canvasLowPass.element);
-        secFrequencies.addItem(canvasHighPass.element);
-        secResult.addItem(canvasResult.element);
-        secResult.addItem(canvasResultSmall.element);
-		document.body.appendChild(secFrequencies.element);
-		document.body.appendChild(secResult.element);
+        secFrequencies.addItem(canvLowPass.element);
+        secFrequencies.addItem(canvHighPass.element);
+        secResult.addItem(canvResult.element);
+        secResult.addItem(canvResultSmall.element);
+		this.eleBody.appendChild(secFrequencies.element);
+		this.eleBody.appendChild(secResult.element);
 	}
-    private showError(message:string) {
-        alert(message);
+
+    /**
+     * Display an error and resets the UI.
+     * @param {string} msg Message to display.
+     */
+    private showError(msg:string) {
+        alert(msg);
         this.reset();
     }
+
+    /**
+     * Checks if both input images are loaded.
+     */
     private checkImages() {
         let imgA = this.imgA,
             imgB = this.imgB;
@@ -94,7 +113,13 @@ export default class HybridGenerator {
         } 
         this.generateImage();
     }
-    private handleUpload(files) {
+
+    /**
+     * Handles upload completion of input images.
+     * @param {FileList} files List of uploaded files.
+     */
+    private handleUpload(files:FileList) {
+        // Input validation
         let imageExt:RegExp = /\.(jpe?g|png|gif)$/i;
         if (files.length === 0) {
             return;
@@ -107,13 +132,14 @@ export default class HybridGenerator {
             this.showError('Please upload images (jpg, png or gif).');
             return;
         }
+        // Begin read
         this.count = 0;
         this.reset();
         let secInput = this.secInputs,
             readerA:FileReader = new FileReader(),
             readerB:FileReader = new FileReader(),
-            imgA = this.imgA = document.createElement('img'),
-            imgB = this.imgB = document.createElement('img');
+            imgA:HTMLImageElement = this.imgA = document.createElement('img'),
+            imgB:HTMLImageElement = this.imgB = document.createElement('img');
         readerA.onerror = readerB.onerror = () => {
             this.showError('Error reading images. Please try again.')
         }
@@ -130,6 +156,7 @@ export default class HybridGenerator {
         };
         readerB.readAsDataURL(files[1]);
     }
+
     swap() {
         if (this.imgA === null || this.imgB === null) {
             return;
@@ -141,6 +168,10 @@ export default class HybridGenerator {
         this.imgB = tempA;
         this.generateImage();
     }
+
+    /**
+     * Shows the output of demo input images.
+     */
 	showDemo() {
         this.reset();
 		let secInput = this.secInputs,
@@ -151,6 +182,10 @@ export default class HybridGenerator {
 		imgB.onload = this.checkImages.bind(this);
 		imgB.src = 'images/elijah-wood.png';
 	}
+
+    /**
+     * Resets the UI.
+     */
     reset() {
         this.secInputs.clearItems();
         this.secFrequencies.destroy()
@@ -158,4 +193,5 @@ export default class HybridGenerator {
         this.imgA = this.imgB = null;
         this.count = 0;
 	}
+    
 }
