@@ -2,51 +2,142 @@
  * Stylesheet
  */
 
-$section-color: #ddd
-$section-accordion-color: #666
+// ----------------------------------------------------------------------------
+// Variables & Functions
+// ----------------------------------------------------------------------------
+
+$base-em: 16px
+
+$gray-1: #111
+$gray-2: #333
+$gray-3: #555
+$gray-4: #666
+
+$section-color: $gray-2
+$section-accordion-color: #999
 $section-accordion-size: 6px
+
+@function rem($target)
+    @return ($target / $base-em) + 0rem
+
+// ----------------------------------------------------------------------------
+// Base
+// ----------------------------------------------------------------------------
+
+body
+	margin: 0.5rem 0.5rem 2rem 0.5rem
+	background-color: $gray-1
+	font-family: 'Helvetica Neue', Roboto, san-serif
+	color: white
 
 .clearfix:after
     display: table
     content: ''
     clear: both
 
-body
-	font-family: "Inconsolata", "Helvetica Neue", Roboto, san-serif
+// ----------------------------------------------------------------------------
+// Section
+// ----------------------------------------------------------------------------
 
 .section
 	&.-expanded
 		.section__heading:after
-			top: -2px
+			top: 0
 			border-top-color: transparent
 			border-bottom-color: $section-accordion-color
 		.section__body
 			display: block
 
-
 .section__heading
 	background-color: $section-color
 	cursor: pointer
 	margin-bottom: 0
-	padding: 4px 6px 4px 6px
-	font-size: 0.75rem
+	border-radius: rem(3px) rem(3px) 0 0
+	padding: rem(6px)
+	font-size: 1rem
 	&:after
 		content: ''
 		display: block
 		float: right
 		position: relative
-		top: $section-accordion-size - 2px
+		top: rem($section-accordion-size)
 		border: solid $section-accordion-size transparent
 		border-top-color: $section-accordion-color
+	&:hover
+		background-color: $gray-3
+
+.section__controlbar
+	display: flex
+	flex-wrap: wrap
+	background-color: $section-color
+	padding: 0 rem(6px)
 
 .section__body
 	@extend .clearfix
 	display: none
+	padding: rem(2px)
 	border: solid 1px $section-color
 	border-top: 0
+	border-radius: 0 0 rem(3px) rem(3px)
+	background-color: $gray-2
 	img, canvas
-		margin: 2px 0 2px 2px
+		margin-right: rem(2px)
+		margin-bottom: rem(2px)
 		display: block
 		float: left
-		max-width: 200px
+		max-width: rem(200px)
 		height: auto
+
+// ----------------------------------------------------------------------------
+// Section control
+// ----------------------------------------------------------------------------
+
+.control
+	display: flex
+	flex-wrap: nowrap
+	align-items: center
+	margin: rem(4px) rem(12px) rem(4px) 0
+
+.control--value
+	cursor: ew-resize
+
+.control__label
+	margin-right: 0.5rem
+	margin-top: rem(2px)
+	font-size: 0.75rem
+	pointer-events: none
+
+%control__input
+	position: relative
+	overflow: hidden
+	border: 0
+	border-radius: rem(2px)
+	padding: rem(1px) rem(6px) 0 rem(6px)
+	height: rem(24px)
+	background-color: $gray-3
+	font-size: 0.75rem
+	color: white
+	&:hover
+		background-color: $gray-4
+
+.control__input
+	@extend %control__input
+	width: 3rem
+	&:focus
+		background-color: white
+		outline: 0
+		color: black
+
+.control__upload
+	@extend %control__input
+	width: 11rem
+	height: rem(22px)
+	&:focus
+		outline: 0
+
+.control__button
+	@extend %control__input
+	&:active
+		top: rem(2px)
+	&:focus
+		outline: 0
