@@ -7,6 +7,8 @@ export default class Canvas {
 
 	private ele:HTMLCanvasElement;
 	private context:CanvasRenderingContext2D;
+	private width:number;
+	private height:number;
 
 	/**
 	 * @param {ImageData} img Image to display.
@@ -26,10 +28,17 @@ export default class Canvas {
 	 * @param {ImageData} img Image buffer.
 	 */
 	drawImage(img:ImageData) {
-		let c:CanvasRenderingContext2D = this.context;
-		this.element.width = img.width;
-		this.element.height = img.height;
+		let c:CanvasRenderingContext2D = this.context,
+			width = this.element.width = img.width,
+			height = this.element.height = img.height;
 		c.putImageData(img, 0, 0);
+	}
+
+	/**
+	 * Resets the canvas.
+	 */
+	reset() {
+		this.context.clearRect(0, 0, this.width, this.height);
 	}
 
 	get element() {

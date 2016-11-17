@@ -7,34 +7,43 @@ import * as Helper from './Helper'
 
 export default class Section {
 
-	private ele:HTMLElement;
-	private eleHeading:HTMLElement;
-	private eleBody:HTMLElement;
-	private eleControlBar:HTMLElement;
-	private controls = [];
-	private isExpanded:boolean = true;
+	protected ele:HTMLElement;
+	protected eleHeading:HTMLElement;
+	protected eleControlBar:HTMLElement;
+	protected eleDesc:HTMLElement;
+	protected eleBody:HTMLElement;
+	protected controls = [];
+	protected isExpanded:boolean = true;
 
 	/**
 	 * @param {string} title Title displayed in heading.
+	 * @param {string} description Description to display below controls.
 	 */
-	constructor(title:string) {
+	constructor(title:string, description?:string, hasBody:boolean = true) {
 		let ele = this.ele = document.createElement('section'),
 			eleHeading = this.eleHeading = document.createElement('h2'),
-			eleControlBar = this.eleControlBar = document.createElement('div'),
+			eleDesc = this.eleDesc = document.createElement('div'),
 			eleBody = this.eleBody = document.createElement('div');
 		// Container
 		ele.className = 'section -expanded';
 		// Heading
 		eleHeading.textContent = title;
 		eleHeading.className = 'section__heading';
-		eleHeading.addEventListener('click', this.toggle.bind(this));
 		ele.appendChild(eleHeading);
-		// Control bar
-		eleControlBar.className = 'section__controlbar';
-		ele.appendChild(eleControlBar);
-		// Body
-		eleBody.className = 'section__body';
-		ele.appendChild(eleBody);
+		if (description) {
+			// Description
+			eleDesc.className = 'section__description';
+			eleDesc.textContent = description;
+			ele.appendChild(eleDesc);
+		}
+		if (hasBody) {
+			// Body
+			eleBody.className = 'section__body';
+			ele.appendChild(eleBody);
+			// Add accordion behaviour
+			eleHeading.classList.add('section__heading--accordion');
+			eleHeading.addEventListener('click', this.toggle.bind(this));
+		}
 	}
 
 	/**
@@ -78,16 +87,35 @@ export default class Section {
 	}
 
 	/**
+	 * Adds a control to the control bar.
+	 * @param {any} instance Control definition. Should have element as a field.
+	 */
+	private addControl(instance:any) {
+		if (!this.eleControlBar) {
+			let eleControlBar = this.eleControlBar = document.createElement('div');
+			eleControlBar.className = 'section__controlbar';
+			this.ele.insertBefore(eleControlBar, this.eleHeading.nextSibling);
+		}
+		this.controls.push(instance);
+		this.eleControlBar.appendChild(instance.element);
+	}
+
+	/**
 	 * Adds a button to the control bar.
 	 * @param {string} label Label of the button.
 	 * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
 	 */
 	addButton(label:string, onClick:EventListenerOrEventListenerObject) {
-		let ele:HTMLFormElement = document.createElement('form'),
+		let ele:HTMLElement = document.createElement('div'),
 			eleInput:HTMLInputElement = document.createElement('input'),
 			destroy:Function = () => {
 				eleInput.removeEventListener('click', onClick);
 				ele.parentNode.removeChild(ele);
+			},
+			instance = {
+				element: ele,
+				label,
+				destroy
 			};
 		// Container
 		ele.className = 'control';
@@ -98,12 +126,67 @@ export default class Section {
 		eleInput.addEventListener('click', onClick);
 		ele.appendChild(eleInput);
 		// Add to DOM and model
-		this.eleControlBar.appendChild(ele);
-		this.controls.push({
-			element: ele,
-			label,
-			destroy
-		});
+		this.addControl(instance);
+		return instance;
+	}
+
+	/**
+	 * Adds a button to the control bar.
+	 * @param {string} label Label of the button.
+	 * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
+	 */
+	addTabGroup(labels:string[], onClick:Function) {
+		let ele:HTMLElement = document.createElement('div'),
+			eleButtons:HTMLInputElement[] = [],
+			activeItem:HTMLElement,
+			select:Function = (eleButton:HTMLElement) => {
+				if (activeItem) {
+					activeItem.classList.remove('-active');
+				}
+				eleButton.classList.add('-active');
+				activeItem = eleButton;
+			},
+			selectByName:Function = (name:string) => {
+				let i:number = eleButtons.length;
+				while (--i) {
+					if (name === eleButtons[i].value) {
+						select(eleButtons[i]);
+						return;
+					}
+				}
+			},
+			onTabClick:EventListenerOrEventListenerObject = function() {
+				select(this);
+				onClick(this.value);
+			},
+			destroy:Function = () => {
+				while (eleButtons.length) {
+					let eleButton = eleButtons.shift();
+					eleButton.removeEventListener('click', onTabClick);
+				}
+				ele.parentNode.removeChild(ele);
+			},
+			instance = {
+				element: ele,
+				select: selectByName,
+				destroy
+			};
+		// Container
+		ele.className = 'control';
+		// Buttons
+		for (let i = 0; i < labels.length; i++) {
+			let eleButton = document.createElement('input');
+			eleButton.value = labels[i];
+			eleButton.type = 'button';
+			eleButton.className = 'control__tab-button';
+			eleButton.addEventListener('click', onTabClick);
+			ele.appendChild(eleButton);
+			eleButtons.push(eleButton);
+		}
+		select(eleButtons[0]);
+		// Add to DOM and model
+		this.addControl(instance);
+		return instance;
 	}
 
 	/**
@@ -114,7 +197,7 @@ export default class Section {
 	 * @param {Function} onChange Event handler for input value change.
 	 */
 	addParameter(label:string, initial:number, max:number, onChange:Function) {
-		let ele:HTMLFormElement = document.createElement('form'),
+		let ele:HTMLElement = document.createElement('div'),
 			eleLabel:HTMLLabelElement = document.createElement('label'),
 			eleInput:HTMLInputElement = document.createElement('input'),
 			startX:number = 0,
@@ -147,6 +230,11 @@ export default class Section {
 				window.removeEventListener('mouseup', onRelease);
 				debounced = null;
 				ele.parentNode.removeChild(ele);
+			},
+			instance = {
+				element: ele,
+				label,
+				destroy
 			};
 		// Container
 		ele.className = 'control control--value';
@@ -163,12 +251,8 @@ export default class Section {
 		eleInput.addEventListener('input', onInput);
 		ele.appendChild(eleInput);
 		// Add to DOM and model
-		this.eleControlBar.appendChild(ele);
-		this.controls.push({
-			element: ele,
-			label,
-			destroy
-		});
+		this.addControl(instance);
+		return instance;
 	}
 
 	/**
@@ -177,8 +261,9 @@ export default class Section {
 	 * @param {Function} onUpload Event handler for file upload.
 	 */
 	addUpload(label:string, onUpload:Function) {
-		let ele:HTMLFormElement = document.createElement('form'),
-			eleLabel:HTMLLabelElement = document.createElement('label'),
+		let ele:HTMLElement = document.createElement('div'),
+			eleWrap:HTMLElement = document.createElement('div'),
+			eleLabel:HTMLSpanElement = document.createElement('span'),
 			eleInput:HTMLInputElement = document.createElement('input'),
 			onChange:EventListenerOrEventListenerObject = function() {
 				onUpload(this.files);
@@ -186,26 +271,29 @@ export default class Section {
 			destroy:Function = () => {
 				eleInput.removeEventListener('change', onChange);
 				ele.parentNode.removeChild(ele);
+			},
+			instance = {
+				element: ele,
+				label,
+				destroy
 			};
 		// Container
 		ele.className = 'control';
 		// Label
-		eleLabel.className = 'control__label';
 		eleLabel.textContent = label;
-		ele.appendChild(eleLabel);
 		// Input
 		eleInput.className = 'control__upload';
 		eleInput.type = 'file';
 		eleInput.multiple = true;
 		eleInput.addEventListener('change', onChange);
-		ele.appendChild(eleInput);
+		// Wrap
+		eleWrap.className = 'control__upload-wrap';
+		eleWrap.appendChild(eleInput);
+		eleWrap.appendChild(eleLabel);
+		ele.appendChild(eleWrap);
 		// Add to DOM and model
-		this.eleControlBar.appendChild(ele);
-		this.controls.push({
-			element: ele,
-			label,
-			destroy
-		});
+		this.addControl(instance);
+		return instance;
 	}
 
 	/**

@@ -8,6 +8,8 @@
 
 $base-em: 16px
 
+$color-accent: #3498DB
+
 $section-color: #333
 $section-accordion-color: #999
 $section-accordion-size: 6px
@@ -19,12 +21,22 @@ $section-accordion-size: 6px
 // Base
 // ----------------------------------------------------------------------------
 
+*, *:before, *:after
+    box-sizing: border-box
+
 body
-	margin: 0.5rem auto 2rem auto
-	max-width: rem(1024px)
-	background-color: #111
+	margin: 3rem auto 3rem auto
+	padding: 0 rem(8px)
+	max-width: rem(768px)
+	background-color: #222
 	font-family: 'Helvetica Neue', Roboto, san-serif
+	line-height: 1
 	color: white
+
+a
+	color: white
+	&:hover
+		color: #CCC
 
 .clearfix:after
     display: table
@@ -32,41 +44,68 @@ body
     clear: both
 
 // ----------------------------------------------------------------------------
+// Intro
+// ----------------------------------------------------------------------------
+
+.intro-title
+	font-size: rem(21px)
+	@media only screen and (min-width:480px)
+		text-align: center
+
+.intro-description
+	margin-bottom: 1.5rem
+	font-size: rem(14px)
+	line-height: 1.33
+	@media only screen and (min-width:480px)
+		text-align: center
+
+// ----------------------------------------------------------------------------
 // Section
 // ----------------------------------------------------------------------------
 
 .section
+	box-shadow: 0 2px 0 rgba(black, 0.25)
 	&.-expanded
 		.section__heading:after
-			top: 0
+			top: rem(-2px)
 			border-top-color: transparent
 			border-bottom-color: $section-accordion-color
 		.section__body
 			display: block
 
 .section__heading
-	background-color: $section-color
 	margin-bottom: 0
-	border-radius: rem(3px) rem(3px) 0 0
-	padding: rem(6px) rem(12px) rem(6px) rem(8px)
-	font-size: 1rem
+	border-radius: rem(4px) rem(4px) 0 0
+	padding: rem(10px) rem(8px) 0 rem(8px)
+	background-color: #555
+	font-size: rem(14px)
+	height: rem(32px)
+
+.section__heading--accordion
 	cursor: pointer
 	&:after
 		content: ''
 		display: block
 		float: right
 		position: relative
-		top: rem($section-accordion-size)
+		top: rem($section-accordion-size - 2px)
 		border: solid $section-accordion-size transparent
 		border-top-color: $section-accordion-color
 	&:hover
-		background-color: #3C3C3C
+		background-color: #5C5C5C
 
 .section__controlbar
 	display: flex
 	flex-wrap: wrap
-	background-color: $section-color
-	padding: 0 rem(12px) 0 rem(8px)
+	padding: 0 rem(8px) 0 rem(8px)
+	min-height: rem(32px)
+	background-color: #444
+
+.section__description
+	padding: rem(4px) rem(8px) rem(8px) rem(8px)
+	background-color: #444
+	font-size: rem(12px)
+	color: rgba(white, 0.5)
 
 .section__body
 	@extend .clearfix
@@ -74,7 +113,7 @@ body
 	border-top: 0
 	border-radius: 0 0 rem(3px) rem(3px)
 	padding: rem(4px) rem(8px) rem(6px) rem(8px)
-	background-color: #292929
+	background-color: #333
 
 // ----------------------------------------------------------------------------
 // Section control
@@ -117,19 +156,39 @@ body
 		outline: 0
 		color: black
 
-.control__upload
+.control__upload-wrap
 	@extend %control__input
-	width: 11rem
+	box-shadow: 0 1px 0 rgba(black, 0.25)
+	span
+		line-height: rem(24px)
+
+.control__upload
+	position: absolute
+	opacity: 0
 	&:focus
 		outline: 0
 
 .control__button
 	@extend %control__input
+	box-shadow: 0 1px 0 rgba(black, 0.25)
 	cursor: pointer
 	&:active
-		top: rem(2px)
+		top: rem(1px)
+		box-shadow: none
 	&:focus
 		outline: 0
+
+.control__tab-button
+	@extend .control__button
+	border-radius: 0
+	border-right: solid 1px rgba(black, 0.25)
+	&:first-child
+		border-radius: rem(2px) 0 0 rem(2px)
+	&:last-child
+		border-right: 0
+		border-radius: 0 rem(2px) rem(2px) 0
+	&.-active
+		background-color: $color-accent
 
 // ----------------------------------------------------------------------------
 // Canvas
@@ -145,3 +204,19 @@ body
 
 .canvas--small
 	max-width: rem(48px)
+
+
+.tab-section
+	display: none
+	&.-active
+		display: block
+
+// ----------------------------------------------------------------------------
+// Footer
+// ----------------------------------------------------------------------------
+
+.footer
+	opacity: 0.5
+	margin-top: 1.5rem
+	font-size: rem(12px)
+	text-align: center

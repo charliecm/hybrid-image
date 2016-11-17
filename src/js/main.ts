@@ -2,6 +2,7 @@
  * Main
  */
 
-import HybridGenerator from './HybridGenerator';
+import App from './App';
 
-let generator:HybridGenerator = new HybridGenerator();
+let container = document.getElementById('#app'),
+    app:App = new App(container);
