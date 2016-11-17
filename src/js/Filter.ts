@@ -179,3 +179,15 @@ export function overlay(x:number, y:number, srcA:ImageData, srcB:ImageData) {
         b:number = (bA >= max/2) ? (max * (1 - 2 * ((1 - bA/max) * (1 - bB/max)))) : 2 * ((bA * bB) / max);
     return {r, g, b};
 }
+
+/**
+ * Dissolves a pixel value from one source to another.
+ */
+export function dissolve(x:number, y:number, srcA:ImageData, srcB:ImageData, intensity:number) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
+        {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
+        r:number = (rA * intensity) + ((1 - intensity) * rB),
+        g:number = (gA * intensity) + ((1 - intensity) * gB),
+        b:number = (bA * intensity) + ((1 - intensity) * bB);
+    return {r, g, b};
+}

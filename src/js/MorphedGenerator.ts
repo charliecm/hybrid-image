@@ -13,9 +13,9 @@ export default class MorphedGenerator implements Generator {
 
     private imgA:ImageData;
     private imgB:ImageData;
+    private morphs:ImageData[];
+    private morphSteps:number = 5;
     private secMorph:Section;
-    private canvA:Canvas = new Canvas()
-    private canvB:Canvas = new Canvas()
 
     /**
      * @param {HTMLElement} parent Parent element to add sections to.
@@ -23,8 +23,12 @@ export default class MorphedGenerator implements Generator {
      */
 	constructor(private parent:HTMLElement, private onChange:Function) {
         let secMorph:Section = this.secMorph = new Section('Morphed Images');
-        secMorph.addItem(this.canvA.element);
-        secMorph.addItem(this.canvB.element);
+        // Add low-pass radius input
+		secMorph.addParameter('Steps', this.morphSteps, 1, 10, (val) => {
+            this.morphSteps = val;
+            this.updateMorph();
+            this.updateResult();
+		});
         parent.appendChild(secMorph.element);
 	}
 
@@ -36,9 +40,25 @@ export default class MorphedGenerator implements Generator {
     update(imgA:ImageData, imgB:ImageData) {
         this.imgA = imgA,
         this.imgB = imgB;
-        this.canvA.drawImage(imgA);
-        this.canvB.drawImage(imgB);
+        this.updateMorph();
         this.updateResult();
+    }
+
+    /**
+     * Updates intermediary morphed images.
+     */
+    updateMorph() {
+        let steps = this.morphSteps,
+            secMorph:Section = this.secMorph,
+            morphs:ImageData[] = this.morphs = [];
+        secMorph.clearItems();
+        for (let i = 0; i < steps; i++) {
+            let intensity:number = (1/steps) * i,
+                result:ImageData = Filter.apply(this.imgA, Filter.dissolve, this.imgB, intensity),
+                canv:Canvas = new Canvas(result);
+            secMorph.addItem(canv.element);
+            morphs.push(result);
+        }
     }
     
     /**
