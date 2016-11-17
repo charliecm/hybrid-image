@@ -7,13 +7,14 @@ import * as Helper from './Helper'
 
 export default class Section {
 
-	protected ele:HTMLElement;
-	protected eleHeading:HTMLElement;
-	protected eleControlBar:HTMLElement;
-	protected eleDesc:HTMLElement;
-	protected eleBody:HTMLElement;
-	protected controls = [];
-	protected isExpanded:boolean = true;
+	private ele:HTMLElement;
+	private eleHeading:HTMLElement;
+	private eleControlBar:HTMLElement;
+	private eleDesc:HTMLElement;
+	private eleBody:HTMLElement;
+	private controls = [];
+	private isExpanded:boolean = true;
+	private readonly updateDelay:number = 800;
 
 	/**
 	 * @param {string} title Title displayed in heading.
@@ -196,17 +197,17 @@ export default class Section {
 	 * @param {number} max Maximum value.
 	 * @param {Function} onChange Event handler for input value change.
 	 */
-	addParameter(label:string, initial:number, max:number, onChange:Function) {
+	addParameter(label:string, initial:number, min:number, max:number, onChange:Function) {
 		let ele:HTMLElement = document.createElement('div'),
 			eleLabel:HTMLLabelElement = document.createElement('label'),
 			eleInput:HTMLInputElement = document.createElement('input'),
 			startX:number = 0,
 			startVal:number = 0,
-			debounced:Function = Helper.debounce(onChange, 500),
+			debounced:Function = Helper.debounce(onChange, this.updateDelay),
 			onDrag:EventListenerOrEventListenerObject = (event:MouseEvent) => {
 				// Change value incrementally on drag
 				let dx = event.x - startX;
-				eleInput.value = Helper.clamp(startVal + Math.floor(dx / 10), 0, max).toString();
+				eleInput.value = Helper.clamp(startVal + Math.floor(dx / 10), min, max).toString();
 				debounced(parseInt(eleInput.value));
 			},
 			onRelease:EventListenerOrEventListenerObject = () => {
