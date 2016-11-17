@@ -1077,18 +1077,16 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
     "use strict";
     var HybridGenerator = (function () {
         /**
-         * @param {HTMLElement} parent Parent element to add sections to.
          * @param {Function} onChange Event handler for intermediary image changes.
          */
-        function HybridGenerator(parent, onChange) {
+        function HybridGenerator(onChange) {
             var _this = this;
-            this.parent = parent;
             this.onChange = onChange;
             this.canvLowPass = new Canvas_1.default();
             this.canvHighPass = new Canvas_1.default();
             this.lowPassRadius = 6;
             this.highPassRadius = 2;
-            var secFrequencies = this.secFrequencies = new Section_1.default('Low/high frequency images');
+            var ele = this.ele = document.createElement('div'), secFrequencies = this.secFrequencies = new Section_1.default('Low/high frequency images');
             // Add low-pass radius input
             secFrequencies.addParameter('Low-pass radius', this.lowPassRadius, 0, 30, function (val) {
                 _this.lowPassRadius = val;
@@ -1103,7 +1101,7 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
             });
             secFrequencies.addItem(this.canvLowPass.element);
             secFrequencies.addItem(this.canvHighPass.element);
-            parent.appendChild(secFrequencies.element);
+            ele.appendChild(secFrequencies.element);
         }
         /**
          * Updates intermediary images from input images.
@@ -1138,35 +1136,203 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
             var result = Operation.hybridImage(this.lowPass, this.highPass);
             this.onChange(result);
         };
+        Object.defineProperty(HybridGenerator.prototype, "element", {
+            get: function () {
+                return this.ele;
+            },
+            enumerable: true,
+            configurable: true
+        });
         return HybridGenerator;
     }());
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.default = HybridGenerator;
 });
 /**
+ * MorphPoint
+ */
+define("MorphPoint", ["require", "exports"], function (require, exports) {
+    "use strict";
+    var MorphPoint = (function () {
+        /**
+         * @param {number} x Initial x position.
+         * @param {number} y Initial y position.
+         */
+        function MorphPoint(x, y) {
+            this.isSelected = false;
+            this.radius = 5;
+            this.radiusSelect = 10;
+            this.xA = this.xB = x;
+            this.yA = this.yB = y;
+        }
+        /**
+         * Updates the position of a point.
+         * @param {boolean} isA Draw point A, otherwise point B.
+         * @param {number} x New x position.
+         * @param {number} y New y position.
+         */
+        MorphPoint.prototype.update = function (isA, x, y) {
+            if (isA) {
+                this.xA = x;
+                this.yA = y;
+            }
+            else {
+                this.xB = x;
+                this.yB = y;
+            }
+        };
+        /**
+         * Draws the point on a canvas.
+         * @param {boolean} isA Draw point A, otherwise point B.
+         * @param {CanvasRenderingContext2D} c Canvas rendering context.
+         */
+        MorphPoint.prototype.draw = function (isA, c) {
+            var xx = (isA) ? this.xA : this.xB, yy = (isA) ? this.yA : this.yB, r = this.radius;
+            c.beginPath();
+            if (this.isSelected) {
+                c.fillStyle = 'yellow';
+                c.strokeStyle = 'white';
+            }
+            else {
+                c.fillStyle = 'red';
+                c.strokeStyle = '';
+            }
+            c.ellipse(xx, yy, r, r, 0, 0, 2 * Math.PI);
+            c.fill();
+        };
+        /**
+         * Selects the point.
+         */
+        MorphPoint.prototype.select = function () {
+            this.isSelected = true;
+        };
+        /**
+         * Unselects the point.
+         */
+        MorphPoint.prototype.unselect = function () {
+            this.isSelected = false;
+        };
+        /**
+         * Returns true if point boundary contains the specified position.
+         * @param {boolean} isA Draw point A, otherwise point B.
+         * @param {number} x Target x position.
+         * @param {number} y Target y position.
+         */
+        MorphPoint.prototype.contains = function (isA, x, y) {
+            var xx = (isA) ? this.xA : this.xB, yy = (isA) ? this.yA : this.yB, r = this.radiusSelect;
+            return (x > xx - r) && (x < xx + r) && (y > yy - r) && (y < yy + r);
+        };
+        return MorphPoint;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = MorphPoint;
+});
+/**
+ * MorphEditor
+ */
+define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, exports, MorphPoint_1) {
+    "use strict";
+    var MorphEditor = (function () {
+        function MorphEditor() {
+            this.points = [];
+            var ele = this.ele = document.createElement('div'), canvA = this.canvA = document.createElement('canvas'), canvB = this.canvB = document.createElement('canvas');
+            canvA.className = canvB.className = 'canvas';
+            this.contextA = canvA.getContext('2d'),
+                this.contextB = canvB.getContext('2d');
+            this.bindCanvasEvents(canvA, true);
+            this.bindCanvasEvents(canvB, false);
+            ele.appendChild(canvA);
+            ele.appendChild(canvB);
+        }
+        MorphEditor.prototype.bindCanvasEvents = function (canv, isA) {
+            var _this = this;
+            canv.onmousedown = function (event) {
+                var scale = canv.width / canv.clientWidth, x = (event.pageX - canv.offsetLeft) * scale, y = (event.pageY - canv.offsetTop) * scale, points = _this.points, hasSelect = false, selectedPoint = _this.selectedPoint;
+                if (selectedPoint) {
+                    selectedPoint.unselect();
+                }
+                for (var i = 0; i < points.length; i++) {
+                    var point = points[i];
+                    if (point.contains(isA, x, y)) {
+                        point.select();
+                        _this.selectedPoint = point;
+                        hasSelect = true;
+                        break;
+                    }
+                }
+                if (!hasSelect) {
+                    points.push(new MorphPoint_1.default(x, y));
+                }
+                _this.updateCanvas();
+            };
+            canv.onmousemove = function (event) {
+                var scale = canv.width / canv.clientWidth, x = (event.pageX - canv.offsetLeft) * scale, y = (event.pageY - canv.offsetTop) * scale, selectedPoint = _this.selectedPoint;
+                if (selectedPoint) {
+                    selectedPoint.update(isA, x, y);
+                    _this.updateCanvas();
+                }
+            };
+            canv.onmouseup = function (event) {
+                var selectedPoint = _this.selectedPoint;
+                if (selectedPoint) {
+                    selectedPoint.unselect();
+                    _this.selectedPoint = null;
+                }
+            };
+        };
+        MorphEditor.prototype.updateCanvas = function () {
+            var cA = this.contextA, cB = this.contextB, points = this.points;
+            cA.putImageData(this.imgA, 0, 0);
+            cB.putImageData(this.imgB, 0, 0);
+            for (var i = 0; i < points.length; i++) {
+                points[i].draw(true, cA);
+                points[i].draw(false, cB);
+            }
+        };
+        MorphEditor.prototype.updateSources = function (imgA, imgB) {
+            this.imgA = imgA;
+            this.imgB = imgB;
+            this.canvA.width = this.canvB.width = imgA.width;
+            this.canvA.height = this.canvB.height = imgA.height;
+            this.contextA.putImageData(imgA, 0, 0);
+            this.contextB.putImageData(imgB, 0, 0);
+        };
+        Object.defineProperty(MorphEditor.prototype, "element", {
+            get: function () {
+                return this.ele;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return MorphEditor;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = MorphEditor;
+});
+/**
  * MorphedGenerator
  * Displays the morphed image hybrid image generator UI.
  */
-define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "Section"], function (require, exports, Canvas_2, Filter, Section_2) {
+define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEditor", "Section"], function (require, exports, Canvas_2, Filter, MorphEditor_1, Section_2) {
     "use strict";
     var MorphedGenerator = (function () {
         /**
-         * @param {HTMLElement} parent Parent element to add sections to.
          * @param {Function} onChange Event handler for intermediary image changes.
          */
-        function MorphedGenerator(parent, onChange) {
+        function MorphedGenerator(onChange) {
             var _this = this;
-            this.parent = parent;
             this.onChange = onChange;
             this.morphSteps = 5;
-            var secMorph = this.secMorph = new Section_2.default('Morphed Images');
+            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor'), secMorph = this.secMorph = new Section_2.default('Morphed Images'), morphEditor = this.morphEditor = new MorphEditor_1.default();
             // Add low-pass radius input
             secMorph.addParameter('Steps', this.morphSteps, 1, 10, function (val) {
                 _this.morphSteps = val;
                 _this.updateMorph();
                 _this.updateResult();
             });
-            parent.appendChild(secMorph.element);
+            secMorphEditor.addItem(morphEditor.element);
+            ele.appendChild(secMorphEditor.element);
+            ele.appendChild(secMorph.element);
         }
         /**
          * Updates intermediary images from input images.
@@ -1176,6 +1342,7 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "Section"]
         MorphedGenerator.prototype.update = function (imgA, imgB) {
             this.imgA = imgA,
                 this.imgB = imgB;
+            this.morphEditor.updateSources(imgA, imgB);
             this.updateMorph();
             this.updateResult();
         };
@@ -1198,6 +1365,13 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "Section"]
             var result = Filter.apply(this.imgA, Filter.overlay, this.imgB);
             this.onChange(result);
         };
+        Object.defineProperty(MorphedGenerator.prototype, "element", {
+            get: function () {
+                return this.ele;
+            },
+            enumerable: true,
+            configurable: true
+        });
         return MorphedGenerator;
     }());
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -1216,10 +1390,9 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
             this.countTotal = 2;
             this.tabOriginal = 'Original';
             this.tabMorphed = 'Morphed Image';
-            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), eleHybridTab = this.eleHybridTab = document.createElement('div'), eleMorphedTab = this.eleMorphedTab = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result'), genHybrid = this.genHybrid = new HybridGenerator_1.default(eleHybridTab, this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(eleMorphedTab, this.updateResult.bind(this));
+            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
             // Sections wrap
             ele.className = 'sections';
-            eleHybridTab.className = eleMorphedTab.className = 'tab-section';
             // Input section
             secInput.addUpload('Upload', this.handleUpload.bind(this));
             secInput.addButton('Swap Images', this.swap.bind(this));
@@ -1237,6 +1410,7 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
                 window.location.href = url;
             });
             // Add elements
+            eleHybridTab.className = eleMorphedTab.className = 'tab-section';
             eleBody.appendChild(eleHybridTab);
             eleBody.appendChild(eleMorphedTab);
             ele.appendChild(secInput.element);
