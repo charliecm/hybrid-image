@@ -1,0 +1,1400 @@
+/**
+ * Canvas
+ * Wrapper for canvas element.
+ */
+define("Canvas", ["require", "exports"], function (require, exports) {
+    "use strict";
+    var Canvas = (function () {
+        /**
+         * @param {ImageData} img Image to display.
+         * @param {boolean} isSmall Display a smaller canvas.
+         */
+        function Canvas(img, isSmall) {
+            if (isSmall === void 0) { isSmall = false; }
+            var ele = this.ele = document.createElement('canvas');
+            this.context = ele.getContext('2d');
+            ele.className = 'canvas' + ((isSmall) ? ' canvas--small' : '');
+            if (img) {
+                this.drawImage(img);
+            }
+        }
+        /**
+         * Draws an image.
+         * @param {ImageData} img Image buffer.
+         */
+        Canvas.prototype.drawImage = function (img) {
+            var c = this.context, width = this.element.width = img.width, height = this.element.height = img.height;
+            c.putImageData(img, 0, 0);
+        };
+        /**
+         * Resets the canvas.
+         */
+        Canvas.prototype.reset = function () {
+            this.context.clearRect(0, 0, this.width, this.height);
+        };
+        Object.defineProperty(Canvas.prototype, "element", {
+            get: function () {
+                return this.ele;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return Canvas;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = Canvas;
+});
+/**
+ * Generator
+ */
+define("Generator", ["require", "exports"], function (require, exports) {
+    "use strict";
+});
+/**
+ * Helper
+ * A set of helper functions.
+ */
+define("Helper", ["require", "exports"], function (require, exports) {
+    "use strict";
+    /**
+     * Clips a value to 8-bit color range.
+     * @param {number} val Color value.
+     */
+    function clip(val) {
+        return Math.min(Math.max(val, 0), 255);
+    }
+    exports.clip = clip;
+    /**
+     * Clamps a value within the specific number range.
+     * @param {number} val Value.
+     * @param {number} min Minimum value.
+     * @param {number} max Maximum value.
+     */
+    function clamp(val, min, max) {
+        return Math.min(Math.max(val, min), max);
+    }
+    exports.clamp = clamp;
+    /**
+     * Debounce
+     * https://gist.github.com/steveosoule/8c98a41d20bb77ae62f7
+     */
+    function debounce(func, wait, immediate) {
+        var timeout;
+        return function () {
+            var context = this, args = arguments;
+            var later = function () {
+                timeout = null;
+                if (!immediate)
+                    func.apply(context, args);
+            };
+            var callNow = immediate && !timeout;
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+            if (callNow)
+                func.apply(context, args);
+        };
+    }
+    exports.debounce = debounce;
+});
+/**
+ * Filter
+ * Image manipulation filters.
+ */
+define("Filter", ["require", "exports", "Helper"], function (require, exports, Helper) {
+    "use strict";
+    /**
+     * Applies a filter to a source image.
+     * https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
+     * @param {ImageData} src Source image buffer.
+     * @param {Function} operation Filter operation to perform.
+     * @param {arguments} params Parameters to pass into operation function.
+     */
+    function apply(src, operation) {
+        var params = [];
+        for (var _i = 2; _i < arguments.length; _i++) {
+            params[_i - 2] = arguments[_i];
+        }
+        var width = src.width, height = src.height, result = new ImageData(src.width, src.height), buf = new ArrayBuffer(width * height * 4), buf8 = new Uint8ClampedArray(buf), buf32 = new Uint32Array(buf);
+        for (var x = 0; x < width; x++) {
+            for (var y = 0; y < height; y++) {
+                var _a = operation.apply(this, [x, y, src].concat(params)), r = _a.r, g = _a.g, b = _a.b;
+                r = Helper.clip(r);
+                g = Helper.clip(g);
+                b = Helper.clip(b);
+                buf32[x + y * width] = (255 << 24) | (b << 16) | (g << 8) | r;
+            }
+        }
+        result.data.set(buf8);
+        return result;
+    }
+    exports.apply = apply;
+    /**
+     * Returns the RGBA data of a pixel.
+     * @param {ImageData} src Source image.
+     * @param {number} x Horizontal position in image.
+     * @param {number} y Vertical position in image.
+     */
+    function getRGB(src, x, y) {
+        var i = (x + y * src.width) * 4, data = src.data;
+        return {
+            r: data[i],
+            g: data[++i],
+            b: data[++i],
+            a: data[++i]
+        };
+    }
+    exports.getRGB = getRGB;
+    /**
+     * Brightens a pixel.
+     * @param {number} intensity Multiplication intensity.
+     */
+    function brighten(x, y, src, intensity) {
+        var _a = this.getRGB(src, x, y), r = _a.r, g = _a.g, b = _a.b;
+        r *= intensity;
+        g *= intensity;
+        b *= intensity;
+        return { r: r, g: g, b: b };
+    }
+    exports.brighten = brighten;
+    /**
+     * Darkens a pixel.
+     * @param {number} intensity Division intensity.
+     */
+    function darken(x, y, src, intensity) {
+        var _a = this.getRGB(src, x, y), r = _a.r, g = _a.g, b = _a.b;
+        r /= intensity;
+        g /= intensity;
+        b /= intensity;
+        return { r: r, g: g, b: b };
+    }
+    exports.darken = darken;
+    /**
+     * Converts pixel to grayscale.
+     */
+    function grayscale(x, y, src) {
+        var _a = this.getRGB(src, x, y), r = _a.r, g = _a.g, b = _a.b;
+        r = g = b = (r + g + b) / 3;
+        return { r: r, g: g, b: b };
+    }
+    exports.grayscale = grayscale;
+    /**
+     * Inverts pixel value.
+     */
+    function invert(x, y, src) {
+        var _a = this.getRGB(src, x, y), r = _a.r, g = _a.g, b = _a.b;
+        r = 255 - r;
+        g = 255 - g;
+        b = 255 - b;
+        return { r: r, g: g, b: b };
+    }
+    exports.invert = invert;
+    /**
+     * Performs a convolution on a pixel.
+     * @param {number[][]} matrix Matrix to apply.
+     * @param {boolean} shiftValues Shifts output value to the middle.
+     */
+    function convolve(x, y, src, matrix, shiftValues) {
+        if (shiftValues === void 0) { shiftValues = false; }
+        var r = 0, g = 0, b = 0, radiusX = Math.floor(matrix[0].length / 2), radiusY = Math.floor(matrix.length / 2);
+        for (var relX = -radiusX; relX <= radiusX; relX++) {
+            for (var relY = -radiusY; relY <= radiusY; relY++) {
+                var xx = x + relX, yy = y + relY;
+                if (xx < 0 || xx >= src.width || yy < 0 || yy >= src.height) {
+                    continue;
+                }
+                var multiplier = matrix[relX + radiusX][relY + radiusY], _a = this.getRGB(src, xx, yy), relR = _a.r, relG = _a.g, relB = _a.b;
+                relR *= multiplier;
+                relG *= multiplier;
+                relB *= multiplier;
+                r += relR;
+                g += relG;
+                b += relB;
+            }
+        }
+        if (shiftValues) {
+            r += 128;
+            g += 128;
+            b += 128;
+        }
+        return { r: r, g: g, b: b };
+    }
+    exports.convolve = convolve;
+    /**
+     * Subtracts a pixel value symmetrically from two sources.
+     */
+    function subtract(x, y, srcA, srcB) {
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = Math.abs(rA - rB), g = Math.abs(gA - gB), b = Math.abs(bA - bB);
+        return { r: r, g: g, b: b };
+    }
+    exports.subtract = subtract;
+    /**
+     * Multiplies a pixel value from two sources.
+     */
+    function multiply(x, y, srcA, srcB) {
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, max = 255, r = (rA * rB) / max, g = (gA * gB) / max, b = (bA * bB) / max;
+        return { r: r, g: g, b: b };
+    }
+    exports.multiply = multiply;
+    /**
+     * Performs a screen filter on a pixel from two sources.
+     */
+    function screen(x, y, srcA, srcB) {
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, max = 255, r = max * (1 - ((1 - rA / max) * (1 - rB / max))), g = max * (1 - ((1 - gA / max) * (1 - gB / max))), b = max * (1 - ((1 - bA / max) * (1 - bB / max)));
+        return { r: r, g: g, b: b };
+    }
+    exports.screen = screen;
+    /**
+     * Performs an overlay filter (screen/multiply) on a pixel from two sources.
+     */
+    function overlay(x, y, srcA, srcB) {
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, max = 255, r = (rA >= max / 2) ? (max * (1 - 2 * ((1 - rA / max) * (1 - rB / max)))) : 2 * ((rA * rB) / max), g = (gA >= max / 2) ? (max * (1 - 2 * ((1 - gA / max) * (1 - gB / max)))) : 2 * ((gA * gB) / max), b = (bA >= max / 2) ? (max * (1 - 2 * ((1 - bA / max) * (1 - bB / max)))) : 2 * ((bA * bB) / max);
+        return { r: r, g: g, b: b };
+    }
+    exports.overlay = overlay;
+    /**
+     * Dissolves a pixel value from one source to another.
+     */
+    function dissolve(x, y, srcA, srcB, intensity) {
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = (rA * intensity) + ((1 - intensity) * rB), g = (gA * intensity) + ((1 - intensity) * gB), b = (bA * intensity) + ((1 - intensity) * bB);
+        return { r: r, g: g, b: b };
+    }
+    exports.dissolve = dissolve;
+});
+/*
+    StackBlur - a fast almost Gaussian Blur For Canvas
+
+    Version:     0.5
+    Author:        Mario Klingemann
+    Contact:     mario@quasimondo.com
+    Website:    http://www.quasimondo.com/StackBlurForCanvas
+    Twitter:    @quasimondo
+
+    In case you find this class useful - especially in commercial projects -
+    I am not totally unhappy for a small donation to my PayPal account
+    mario@quasimondo.de
+
+    Or support me on flattr:
+    https://flattr.com/thing/72791/StackBlur-a-fast-almost-Gaussian-Blur-Effect-for-CanvasJavascript
+
+    Copyright (c) 2010 Mario Klingemann
+
+    Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation
+    files (the "Software"), to deal in the Software without
+    restriction, including without limitation the rights to use,
+    copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following
+    conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+    OTHER DEALINGS IN THE SOFTWARE.
+    */
+define("StackBlur", ["require", "exports"], function (require, exports) {
+    "use strict";
+    var mul_table = [
+        512, 512, 456, 512, 328, 456, 335, 512, 405, 328, 271, 456, 388, 335, 292, 512,
+        454, 405, 364, 328, 298, 271, 496, 456, 420, 388, 360, 335, 312, 292, 273, 512,
+        482, 454, 428, 405, 383, 364, 345, 328, 312, 298, 284, 271, 259, 496, 475, 456,
+        437, 420, 404, 388, 374, 360, 347, 335, 323, 312, 302, 292, 282, 273, 265, 512,
+        497, 482, 468, 454, 441, 428, 417, 405, 394, 383, 373, 364, 354, 345, 337, 328,
+        320, 312, 305, 298, 291, 284, 278, 271, 265, 259, 507, 496, 485, 475, 465, 456,
+        446, 437, 428, 420, 412, 404, 396, 388, 381, 374, 367, 360, 354, 347, 341, 335,
+        329, 323, 318, 312, 307, 302, 297, 292, 287, 282, 278, 273, 269, 265, 261, 512,
+        505, 497, 489, 482, 475, 468, 461, 454, 447, 441, 435, 428, 422, 417, 411, 405,
+        399, 394, 389, 383, 378, 373, 368, 364, 359, 354, 350, 345, 341, 337, 332, 328,
+        324, 320, 316, 312, 309, 305, 301, 298, 294, 291, 287, 284, 281, 278, 274, 271,
+        268, 265, 262, 259, 257, 507, 501, 496, 491, 485, 480, 475, 470, 465, 460, 456,
+        451, 446, 442, 437, 433, 428, 424, 420, 416, 412, 408, 404, 400, 396, 392, 388,
+        385, 381, 377, 374, 370, 367, 363, 360, 357, 354, 350, 347, 344, 341, 338, 335,
+        332, 329, 326, 323, 320, 318, 315, 312, 310, 307, 304, 302, 299, 297, 294, 292,
+        289, 287, 285, 282, 280, 278, 275, 273, 271, 269, 267, 265, 263, 261, 259];
+    var shg_table = [
+        9, 11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17,
+        17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19,
+        19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20,
+        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 21,
+        21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21,
+        21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22,
+        22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+        22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+        23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24];
+    function processImage(img, canvas, radius, blurAlphaChannel) {
+        if (typeof (img) == 'string') {
+            var img = document.getElementById(img);
+        }
+        else if (typeof HTMLImageElement !== 'undefined' && !(img instanceof HTMLImageElement)) {
+            return;
+        }
+        var w = img.naturalWidth;
+        var h = img.naturalHeight;
+        if (typeof (canvas) == 'string') {
+            var canvas = document.getElementById(canvas);
+        }
+        else if (typeof HTMLCanvasElement !== 'undefined' && !(canvas instanceof HTMLCanvasElement)) {
+            return;
+        }
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        canvas.width = w;
+        canvas.height = h;
+        var context = canvas.getContext('2d');
+        context.clearRect(0, 0, w, h);
+        context.drawImage(img, 0, 0);
+        if (isNaN(radius) || radius < 1)
+            return;
+        if (blurAlphaChannel)
+            processCanvasRGBA(canvas, 0, 0, w, h, radius);
+        else
+            processCanvasRGB(canvas, 0, 0, w, h, radius);
+    }
+    exports.image = processImage;
+    function getImageDataFromCanvas(canvas, top_x, top_y, width, height) {
+        if (typeof (canvas) == 'string')
+            var canvas = document.getElementById(canvas);
+        else if (typeof HTMLCanvasElement !== 'undefined' && !(canvas instanceof HTMLCanvasElement))
+            return;
+        var context = canvas.getContext('2d');
+        var imageData;
+        try {
+            try {
+                imageData = context.getImageData(top_x, top_y, width, height);
+            }
+            catch (e) {
+                throw new Error("unable to access local image data: " + e);
+            }
+        }
+        catch (e) {
+            throw new Error("unable to access image data: " + e);
+        }
+        return imageData;
+    }
+    function processCanvasRGBA(canvas, top_x, top_y, width, height, radius) {
+        if (isNaN(radius) || radius < 1)
+            return;
+        radius |= 0;
+        var imageData = getImageDataFromCanvas(canvas, top_x, top_y, width, height);
+        imageData = processImageDataRGBA(imageData, top_x, top_y, width, height, radius);
+        canvas.getContext('2d').putImageData(imageData, top_x, top_y);
+    }
+    exports.canvasRGBA = processCanvasRGBA;
+    function processImageDataRGBA(imageData, top_x, top_y, width, height, radius) {
+        var pixels = imageData.data;
+        var x, y, i, p, yp, yi, yw, r_sum, g_sum, b_sum, a_sum, r_out_sum, g_out_sum, b_out_sum, a_out_sum, r_in_sum, g_in_sum, b_in_sum, a_in_sum, pr, pg, pb, pa, rbs;
+        var div = radius + radius + 1;
+        var w4 = width << 2;
+        var widthMinus1 = width - 1;
+        var heightMinus1 = height - 1;
+        var radiusPlus1 = radius + 1;
+        var sumFactor = radiusPlus1 * (radiusPlus1 + 1) / 2;
+        var stackStart = new BlurStack();
+        var stack = stackStart;
+        for (i = 1; i < div; i++) {
+            stack = stack.next = new BlurStack();
+            if (i == radiusPlus1)
+                var stackEnd = stack;
+        }
+        stack.next = stackStart;
+        var stackIn = null;
+        var stackOut = null;
+        yw = yi = 0;
+        var mul_sum = mul_table[radius];
+        var shg_sum = shg_table[radius];
+        for (y = 0; y < height; y++) {
+            r_in_sum = g_in_sum = b_in_sum = a_in_sum = r_sum = g_sum = b_sum = a_sum = 0;
+            r_out_sum = radiusPlus1 * (pr = pixels[yi]);
+            g_out_sum = radiusPlus1 * (pg = pixels[yi + 1]);
+            b_out_sum = radiusPlus1 * (pb = pixels[yi + 2]);
+            a_out_sum = radiusPlus1 * (pa = pixels[yi + 3]);
+            r_sum += sumFactor * pr;
+            g_sum += sumFactor * pg;
+            b_sum += sumFactor * pb;
+            a_sum += sumFactor * pa;
+            stack = stackStart;
+            for (i = 0; i < radiusPlus1; i++) {
+                stack.r = pr;
+                stack.g = pg;
+                stack.b = pb;
+                stack.a = pa;
+                stack = stack.next;
+            }
+            for (i = 1; i < radiusPlus1; i++) {
+                p = yi + ((widthMinus1 < i ? widthMinus1 : i) << 2);
+                r_sum += (stack.r = (pr = pixels[p])) * (rbs = radiusPlus1 - i);
+                g_sum += (stack.g = (pg = pixels[p + 1])) * rbs;
+                b_sum += (stack.b = (pb = pixels[p + 2])) * rbs;
+                a_sum += (stack.a = (pa = pixels[p + 3])) * rbs;
+                r_in_sum += pr;
+                g_in_sum += pg;
+                b_in_sum += pb;
+                a_in_sum += pa;
+                stack = stack.next;
+            }
+            stackIn = stackStart;
+            stackOut = stackEnd;
+            for (x = 0; x < width; x++) {
+                pixels[yi + 3] = pa = (a_sum * mul_sum) >> shg_sum;
+                if (pa != 0) {
+                    pa = 255 / pa;
+                    pixels[yi] = ((r_sum * mul_sum) >> shg_sum) * pa;
+                    pixels[yi + 1] = ((g_sum * mul_sum) >> shg_sum) * pa;
+                    pixels[yi + 2] = ((b_sum * mul_sum) >> shg_sum) * pa;
+                }
+                else {
+                    pixels[yi] = pixels[yi + 1] = pixels[yi + 2] = 0;
+                }
+                r_sum -= r_out_sum;
+                g_sum -= g_out_sum;
+                b_sum -= b_out_sum;
+                a_sum -= a_out_sum;
+                r_out_sum -= stackIn.r;
+                g_out_sum -= stackIn.g;
+                b_out_sum -= stackIn.b;
+                a_out_sum -= stackIn.a;
+                p = (yw + ((p = x + radius + 1) < widthMinus1 ? p : widthMinus1)) << 2;
+                r_in_sum += (stackIn.r = pixels[p]);
+                g_in_sum += (stackIn.g = pixels[p + 1]);
+                b_in_sum += (stackIn.b = pixels[p + 2]);
+                a_in_sum += (stackIn.a = pixels[p + 3]);
+                r_sum += r_in_sum;
+                g_sum += g_in_sum;
+                b_sum += b_in_sum;
+                a_sum += a_in_sum;
+                stackIn = stackIn.next;
+                r_out_sum += (pr = stackOut.r);
+                g_out_sum += (pg = stackOut.g);
+                b_out_sum += (pb = stackOut.b);
+                a_out_sum += (pa = stackOut.a);
+                r_in_sum -= pr;
+                g_in_sum -= pg;
+                b_in_sum -= pb;
+                a_in_sum -= pa;
+                stackOut = stackOut.next;
+                yi += 4;
+            }
+            yw += width;
+        }
+        for (x = 0; x < width; x++) {
+            g_in_sum = b_in_sum = a_in_sum = r_in_sum = g_sum = b_sum = a_sum = r_sum = 0;
+            yi = x << 2;
+            r_out_sum = radiusPlus1 * (pr = pixels[yi]);
+            g_out_sum = radiusPlus1 * (pg = pixels[yi + 1]);
+            b_out_sum = radiusPlus1 * (pb = pixels[yi + 2]);
+            a_out_sum = radiusPlus1 * (pa = pixels[yi + 3]);
+            r_sum += sumFactor * pr;
+            g_sum += sumFactor * pg;
+            b_sum += sumFactor * pb;
+            a_sum += sumFactor * pa;
+            stack = stackStart;
+            for (i = 0; i < radiusPlus1; i++) {
+                stack.r = pr;
+                stack.g = pg;
+                stack.b = pb;
+                stack.a = pa;
+                stack = stack.next;
+            }
+            yp = width;
+            for (i = 1; i <= radius; i++) {
+                yi = (yp + x) << 2;
+                r_sum += (stack.r = (pr = pixels[yi])) * (rbs = radiusPlus1 - i);
+                g_sum += (stack.g = (pg = pixels[yi + 1])) * rbs;
+                b_sum += (stack.b = (pb = pixels[yi + 2])) * rbs;
+                a_sum += (stack.a = (pa = pixels[yi + 3])) * rbs;
+                r_in_sum += pr;
+                g_in_sum += pg;
+                b_in_sum += pb;
+                a_in_sum += pa;
+                stack = stack.next;
+                if (i < heightMinus1) {
+                    yp += width;
+                }
+            }
+            yi = x;
+            stackIn = stackStart;
+            stackOut = stackEnd;
+            for (y = 0; y < height; y++) {
+                p = yi << 2;
+                pixels[p + 3] = pa = (a_sum * mul_sum) >> shg_sum;
+                if (pa > 0) {
+                    pa = 255 / pa;
+                    pixels[p] = ((r_sum * mul_sum) >> shg_sum) * pa;
+                    pixels[p + 1] = ((g_sum * mul_sum) >> shg_sum) * pa;
+                    pixels[p + 2] = ((b_sum * mul_sum) >> shg_sum) * pa;
+                }
+                else {
+                    pixels[p] = pixels[p + 1] = pixels[p + 2] = 0;
+                }
+                r_sum -= r_out_sum;
+                g_sum -= g_out_sum;
+                b_sum -= b_out_sum;
+                a_sum -= a_out_sum;
+                r_out_sum -= stackIn.r;
+                g_out_sum -= stackIn.g;
+                b_out_sum -= stackIn.b;
+                a_out_sum -= stackIn.a;
+                p = (x + (((p = y + radiusPlus1) < heightMinus1 ? p : heightMinus1) * width)) << 2;
+                r_sum += (r_in_sum += (stackIn.r = pixels[p]));
+                g_sum += (g_in_sum += (stackIn.g = pixels[p + 1]));
+                b_sum += (b_in_sum += (stackIn.b = pixels[p + 2]));
+                a_sum += (a_in_sum += (stackIn.a = pixels[p + 3]));
+                stackIn = stackIn.next;
+                r_out_sum += (pr = stackOut.r);
+                g_out_sum += (pg = stackOut.g);
+                b_out_sum += (pb = stackOut.b);
+                a_out_sum += (pa = stackOut.a);
+                r_in_sum -= pr;
+                g_in_sum -= pg;
+                b_in_sum -= pb;
+                a_in_sum -= pa;
+                stackOut = stackOut.next;
+                yi += width;
+            }
+        }
+        return imageData;
+    }
+    exports.imageDataRGBA = processImageDataRGBA;
+    function processCanvasRGB(canvas, top_x, top_y, width, height, radius) {
+        if (isNaN(radius) || radius < 1)
+            return;
+        radius |= 0;
+        var imageData = getImageDataFromCanvas(canvas, top_x, top_y, width, height);
+        imageData = processImageDataRGB(imageData, top_x, top_y, width, height, radius);
+        canvas.getContext('2d').putImageData(imageData, top_x, top_y);
+    }
+    exports.canvasRGB = processCanvasRGB;
+    function processImageDataRGB(imageData, top_x, top_y, width, height, radius) {
+        var pixels = imageData.data;
+        var x, y, i, p, yp, yi, yw, r_sum, g_sum, b_sum, r_out_sum, g_out_sum, b_out_sum, r_in_sum, g_in_sum, b_in_sum, pr, pg, pb, rbs;
+        var div = radius + radius + 1;
+        var w4 = width << 2;
+        var widthMinus1 = width - 1;
+        var heightMinus1 = height - 1;
+        var radiusPlus1 = radius + 1;
+        var sumFactor = radiusPlus1 * (radiusPlus1 + 1) / 2;
+        var stackStart = new BlurStack();
+        var stack = stackStart;
+        for (i = 1; i < div; i++) {
+            stack = stack.next = new BlurStack();
+            if (i == radiusPlus1)
+                var stackEnd = stack;
+        }
+        stack.next = stackStart;
+        var stackIn = null;
+        var stackOut = null;
+        yw = yi = 0;
+        var mul_sum = mul_table[radius];
+        var shg_sum = shg_table[radius];
+        for (y = 0; y < height; y++) {
+            r_in_sum = g_in_sum = b_in_sum = r_sum = g_sum = b_sum = 0;
+            r_out_sum = radiusPlus1 * (pr = pixels[yi]);
+            g_out_sum = radiusPlus1 * (pg = pixels[yi + 1]);
+            b_out_sum = radiusPlus1 * (pb = pixels[yi + 2]);
+            r_sum += sumFactor * pr;
+            g_sum += sumFactor * pg;
+            b_sum += sumFactor * pb;
+            stack = stackStart;
+            for (i = 0; i < radiusPlus1; i++) {
+                stack.r = pr;
+                stack.g = pg;
+                stack.b = pb;
+                stack = stack.next;
+            }
+            for (i = 1; i < radiusPlus1; i++) {
+                p = yi + ((widthMinus1 < i ? widthMinus1 : i) << 2);
+                r_sum += (stack.r = (pr = pixels[p])) * (rbs = radiusPlus1 - i);
+                g_sum += (stack.g = (pg = pixels[p + 1])) * rbs;
+                b_sum += (stack.b = (pb = pixels[p + 2])) * rbs;
+                r_in_sum += pr;
+                g_in_sum += pg;
+                b_in_sum += pb;
+                stack = stack.next;
+            }
+            stackIn = stackStart;
+            stackOut = stackEnd;
+            for (x = 0; x < width; x++) {
+                pixels[yi] = (r_sum * mul_sum) >> shg_sum;
+                pixels[yi + 1] = (g_sum * mul_sum) >> shg_sum;
+                pixels[yi + 2] = (b_sum * mul_sum) >> shg_sum;
+                r_sum -= r_out_sum;
+                g_sum -= g_out_sum;
+                b_sum -= b_out_sum;
+                r_out_sum -= stackIn.r;
+                g_out_sum -= stackIn.g;
+                b_out_sum -= stackIn.b;
+                p = (yw + ((p = x + radius + 1) < widthMinus1 ? p : widthMinus1)) << 2;
+                r_in_sum += (stackIn.r = pixels[p]);
+                g_in_sum += (stackIn.g = pixels[p + 1]);
+                b_in_sum += (stackIn.b = pixels[p + 2]);
+                r_sum += r_in_sum;
+                g_sum += g_in_sum;
+                b_sum += b_in_sum;
+                stackIn = stackIn.next;
+                r_out_sum += (pr = stackOut.r);
+                g_out_sum += (pg = stackOut.g);
+                b_out_sum += (pb = stackOut.b);
+                r_in_sum -= pr;
+                g_in_sum -= pg;
+                b_in_sum -= pb;
+                stackOut = stackOut.next;
+                yi += 4;
+            }
+            yw += width;
+        }
+        for (x = 0; x < width; x++) {
+            g_in_sum = b_in_sum = r_in_sum = g_sum = b_sum = r_sum = 0;
+            yi = x << 2;
+            r_out_sum = radiusPlus1 * (pr = pixels[yi]);
+            g_out_sum = radiusPlus1 * (pg = pixels[yi + 1]);
+            b_out_sum = radiusPlus1 * (pb = pixels[yi + 2]);
+            r_sum += sumFactor * pr;
+            g_sum += sumFactor * pg;
+            b_sum += sumFactor * pb;
+            stack = stackStart;
+            for (i = 0; i < radiusPlus1; i++) {
+                stack.r = pr;
+                stack.g = pg;
+                stack.b = pb;
+                stack = stack.next;
+            }
+            yp = width;
+            for (i = 1; i <= radius; i++) {
+                yi = (yp + x) << 2;
+                r_sum += (stack.r = (pr = pixels[yi])) * (rbs = radiusPlus1 - i);
+                g_sum += (stack.g = (pg = pixels[yi + 1])) * rbs;
+                b_sum += (stack.b = (pb = pixels[yi + 2])) * rbs;
+                r_in_sum += pr;
+                g_in_sum += pg;
+                b_in_sum += pb;
+                stack = stack.next;
+                if (i < heightMinus1) {
+                    yp += width;
+                }
+            }
+            yi = x;
+            stackIn = stackStart;
+            stackOut = stackEnd;
+            for (y = 0; y < height; y++) {
+                p = yi << 2;
+                pixels[p] = (r_sum * mul_sum) >> shg_sum;
+                pixels[p + 1] = (g_sum * mul_sum) >> shg_sum;
+                pixels[p + 2] = (b_sum * mul_sum) >> shg_sum;
+                r_sum -= r_out_sum;
+                g_sum -= g_out_sum;
+                b_sum -= b_out_sum;
+                r_out_sum -= stackIn.r;
+                g_out_sum -= stackIn.g;
+                b_out_sum -= stackIn.b;
+                p = (x + (((p = y + radiusPlus1) < heightMinus1 ? p : heightMinus1) * width)) << 2;
+                r_sum += (r_in_sum += (stackIn.r = pixels[p]));
+                g_sum += (g_in_sum += (stackIn.g = pixels[p + 1]));
+                b_sum += (b_in_sum += (stackIn.b = pixels[p + 2]));
+                stackIn = stackIn.next;
+                r_out_sum += (pr = stackOut.r);
+                g_out_sum += (pg = stackOut.g);
+                b_out_sum += (pb = stackOut.b);
+                r_in_sum -= pr;
+                g_in_sum -= pg;
+                b_in_sum -= pb;
+                stackOut = stackOut.next;
+                yi += width;
+            }
+        }
+        return imageData;
+    }
+    exports.imageDataRGB = processImageDataRGB;
+    function BlurStack() {
+        this.r = 0;
+        this.g = 0;
+        this.b = 0;
+        this.a = 0;
+        this.next = null;
+    }
+    // module.exports = {
+    //     image: processImage,
+    //     canvasRGBA: processCanvasRGBA,
+    //     canvasRGB: processCanvasRGB,
+    //     imageDataRGBA: processImageDataRGBA,
+    //     imageDataRGB: processImageDataRGB
+    // };
+});
+/**
+ * Operation
+ * Image manipulation operations.
+ */
+define("Operation", ["require", "exports", "Filter", "StackBlur"], function (require, exports, Filter, StackBlur) {
+    "use strict";
+    /**
+     * Returns the image buffer from an image element.
+     * @param {HTMLImageElement} img Image element.
+     */
+    function getImageData(img) {
+        var canvas = document.createElement('canvas'), c = canvas.getContext('2d'), width = canvas.width = img.naturalWidth, height = canvas.height = img.naturalHeight;
+        c.drawImage(img, 0, 0);
+        return c.getImageData(0, 0, width, height);
+    }
+    exports.getImageData = getImageData;
+    /**
+     * Returns an image buffer under a low-pass (blur) filter.
+     * @param {ImageData} img Image buffer.
+     * @param {number} radius Blur radius.
+     */
+    function lowPass(img, radius) {
+        var monochrome = Filter.apply(img, Filter.grayscale), result = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius);
+        return result;
+    }
+    exports.lowPass = lowPass;
+    /**
+     * Returns an image buffer under a high-pass (sharpen) filter.
+     * @param {ImageData} img Image buffer.
+     * @param {number} radius Blur radius before convolution.
+     */
+    function highPass(img, radius) {
+        // Laplacian of guassian (LoG) - http://fourier.eng.hmc.edu/e161/lectures/gradient/node8.html
+        var matrix = [
+            [0, 0, 1, 0, 0],
+            [0, 1, 2, 1, 0],
+            [1, 2, -16, 2, 1],
+            [0, 1, 2, 1, 0],
+            [0, 0, 1, 0, 0]
+        ], monochrome = Filter.apply(img, Filter.grayscale), blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius), result = Filter.apply(blur, Filter.convolve, matrix, true);
+        return result;
+    }
+    exports.highPass = highPass;
+    /**
+     * Returns an hybrid image synthesized from a low-pass and a high-pass image.
+     * @param {ImageData} lowPass Low-pass image.
+     * @param {ImageData} highPass High-pass image.
+     */
+    function hybridImage(lowPass, highPass) {
+        return Filter.apply(lowPass, Filter.overlay, highPass);
+    }
+    exports.hybridImage = hybridImage;
+});
+/**
+ * Section
+ * An accordion section.
+ */
+define("Section", ["require", "exports", "Helper"], function (require, exports, Helper) {
+    "use strict";
+    var Section = (function () {
+        /**
+         * @param {string} title Title displayed in heading.
+         * @param {string} description Description to display below controls.
+         */
+        function Section(title, description, hasBody) {
+            if (hasBody === void 0) { hasBody = true; }
+            this.controls = [];
+            this.isExpanded = true;
+            this.updateDelay = 800;
+            var ele = this.ele = document.createElement('section'), eleHeading = this.eleHeading = document.createElement('h2'), eleDesc = this.eleDesc = document.createElement('div'), eleBody = this.eleBody = document.createElement('div');
+            // Container
+            ele.className = 'section -expanded';
+            // Heading
+            eleHeading.textContent = title;
+            eleHeading.className = 'section__heading';
+            ele.appendChild(eleHeading);
+            if (description) {
+                // Description
+                eleDesc.className = 'section__description';
+                eleDesc.textContent = description;
+                ele.appendChild(eleDesc);
+            }
+            if (hasBody) {
+                // Body
+                eleBody.className = 'section__body';
+                ele.appendChild(eleBody);
+                // Add accordion behaviour
+                eleHeading.classList.add('section__heading--accordion');
+                eleHeading.addEventListener('click', this.toggle.bind(this));
+            }
+        }
+        /**
+         * Expands the accordion.
+         */
+        Section.prototype.expand = function () {
+            this.ele.classList.add('-expanded');
+            this.isExpanded = true;
+        };
+        /**
+         * Collapses the accordion.
+         */
+        Section.prototype.collapse = function () {
+            this.ele.classList.remove('-expanded');
+            this.isExpanded = false;
+        };
+        /**
+         * Toggles the accordion.
+         */
+        Section.prototype.toggle = function () {
+            (this.isExpanded) ? this.collapse() : this.expand();
+        };
+        /**
+         * Adds an element to the body.
+         */
+        Section.prototype.addItem = function (ele) {
+            this.eleBody.appendChild(ele);
+        };
+        /**
+         * Clear all elements in the body.
+         */
+        Section.prototype.clearItems = function () {
+            var ele = this.eleBody;
+            while (ele.firstChild) {
+                ele.removeChild(ele.firstChild);
+            }
+        };
+        /**
+         * Adds a control to the control bar.
+         * @param {any} instance Control definition. Should have element as a field.
+         */
+        Section.prototype.addControl = function (instance) {
+            if (!this.eleControlBar) {
+                var eleControlBar = this.eleControlBar = document.createElement('div');
+                eleControlBar.className = 'section__controlbar';
+                this.ele.insertBefore(eleControlBar, this.eleHeading.nextSibling);
+            }
+            this.controls.push(instance);
+            this.eleControlBar.appendChild(instance.element);
+        };
+        /**
+         * Adds a button to the control bar.
+         * @param {string} label Label of the button.
+         * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
+         */
+        Section.prototype.addButton = function (label, onClick) {
+            var ele = document.createElement('div'), eleInput = document.createElement('input'), destroy = function () {
+                eleInput.removeEventListener('click', onClick);
+                ele.parentNode.removeChild(ele);
+            }, instance = {
+                element: ele,
+                label: label,
+                destroy: destroy
+            };
+            // Container
+            ele.className = 'control';
+            // Input
+            eleInput.className = 'control__button';
+            eleInput.type = 'button';
+            eleInput.value = label;
+            eleInput.addEventListener('click', onClick);
+            ele.appendChild(eleInput);
+            // Add to DOM and model
+            this.addControl(instance);
+            return instance;
+        };
+        /**
+         * Adds a button to the control bar.
+         * @param {string} label Label of the button.
+         * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
+         */
+        Section.prototype.addTabGroup = function (labels, onClick) {
+            var ele = document.createElement('div'), eleButtons = [], activeItem, select = function (eleButton) {
+                if (activeItem) {
+                    activeItem.classList.remove('-active');
+                }
+                eleButton.classList.add('-active');
+                activeItem = eleButton;
+            }, selectByName = function (name) {
+                var i = eleButtons.length;
+                while (--i) {
+                    if (name === eleButtons[i].value) {
+                        select(eleButtons[i]);
+                        return;
+                    }
+                }
+            }, onTabClick = function () {
+                select(this);
+                onClick(this.value);
+            }, destroy = function () {
+                while (eleButtons.length) {
+                    var eleButton = eleButtons.shift();
+                    eleButton.removeEventListener('click', onTabClick);
+                }
+                ele.parentNode.removeChild(ele);
+            }, instance = {
+                element: ele,
+                select: selectByName,
+                destroy: destroy
+            };
+            // Container
+            ele.className = 'control';
+            // Buttons
+            for (var i = 0; i < labels.length; i++) {
+                var eleButton = document.createElement('input');
+                eleButton.value = labels[i];
+                eleButton.type = 'button';
+                eleButton.className = 'control__tab-button';
+                eleButton.addEventListener('click', onTabClick);
+                ele.appendChild(eleButton);
+                eleButtons.push(eleButton);
+            }
+            select(eleButtons[0]);
+            // Add to DOM and model
+            this.addControl(instance);
+            return instance;
+        };
+        /**
+         * Adds a parameter value input to the control bar.
+         * @param {string} label Label for the input.
+         * @param {number} initial Initial value.
+         * @param {number} max Maximum value.
+         * @param {Function} onChange Event handler for input value change.
+         */
+        Section.prototype.addParameter = function (label, initial, min, max, onChange) {
+            var ele = document.createElement('div'), eleLabel = document.createElement('label'), eleInput = document.createElement('input'), startX = 0, startVal = 0, debounced = Helper.debounce(onChange, this.updateDelay), onDrag = function (event) {
+                // Change value incrementally on drag
+                var dx = event.x - startX;
+                eleInput.value = Helper.clamp(startVal + Math.floor(dx / 10), min, max).toString();
+                debounced(parseInt(eleInput.value));
+            }, onRelease = function () {
+                window.removeEventListener('mousemove', onDrag);
+                window.removeEventListener('mouseup', onRelease);
+            }, onMouseDown = function (event) {
+                // Initiate drag
+                startX = event.x;
+                startVal = parseInt(eleInput.value);
+                window.addEventListener('mousemove', onDrag);
+                window.addEventListener('mouseup', onRelease);
+            }, onInput = function () {
+                debounced(parseInt(eleInput.value));
+            }, destroy = function () {
+                ele.removeEventListener('mousedown', onMouseDown);
+                eleInput.removeEventListener('input', onInput);
+                window.removeEventListener('mousemove', onDrag);
+                window.removeEventListener('mouseup', onRelease);
+                debounced = null;
+                ele.parentNode.removeChild(ele);
+            }, instance = {
+                element: ele,
+                label: label,
+                destroy: destroy
+            };
+            // Container
+            ele.className = 'control control--value';
+            ele.addEventListener('mousedown', onMouseDown);
+            // Label
+            eleLabel.className = 'control__label';
+            eleLabel.textContent = label;
+            ele.appendChild(eleLabel);
+            // Input
+            eleInput.className = 'control__input';
+            eleInput.type = 'number';
+            eleInput.value = initial.toString();
+            eleInput.max = max.toString();
+            eleInput.addEventListener('input', onInput);
+            ele.appendChild(eleInput);
+            // Add to DOM and model
+            this.addControl(instance);
+            return instance;
+        };
+        /**
+         * Adds a file upload input to the control bar.
+         * @param {string} label Label for the input.
+         * @param {Function} onUpload Event handler for file upload.
+         */
+        Section.prototype.addUpload = function (label, onUpload) {
+            var ele = document.createElement('div'), eleWrap = document.createElement('div'), eleLabel = document.createElement('span'), eleInput = document.createElement('input'), onChange = function () {
+                onUpload(this.files);
+            }, destroy = function () {
+                eleInput.removeEventListener('change', onChange);
+                ele.parentNode.removeChild(ele);
+            }, instance = {
+                element: ele,
+                label: label,
+                destroy: destroy
+            };
+            // Container
+            ele.className = 'control';
+            // Label
+            eleLabel.textContent = label;
+            // Input
+            eleInput.className = 'control__upload';
+            eleInput.type = 'file';
+            eleInput.multiple = true;
+            eleInput.addEventListener('change', onChange);
+            // Wrap
+            eleWrap.className = 'control__upload-wrap';
+            eleWrap.appendChild(eleInput);
+            eleWrap.appendChild(eleLabel);
+            ele.appendChild(eleWrap);
+            // Add to DOM and model
+            this.addControl(instance);
+            return instance;
+        };
+        /**
+         * Cleans up and removes the section from document.
+         */
+        Section.prototype.destroy = function () {
+            var ele = this.ele, inputs = this.controls;
+            if (ele.parentNode) {
+                ele.parentNode.removeChild(ele);
+            }
+            while (inputs.length) {
+                inputs.pop().destroy();
+            }
+            this.clearItems();
+        };
+        Object.defineProperty(Section.prototype, "element", {
+            get: function () {
+                return this.ele;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Section.prototype, "body", {
+            get: function () {
+                return this.eleBody;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return Section;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = Section;
+});
+/**
+ * HybridGenerator
+ * Displays the hybrid image generator UI.
+ */
+define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section"], function (require, exports, Canvas_1, Operation, Section_1) {
+    "use strict";
+    var HybridGenerator = (function () {
+        /**
+         * @param {HTMLElement} parent Parent element to add sections to.
+         * @param {Function} onChange Event handler for intermediary image changes.
+         */
+        function HybridGenerator(parent, onChange) {
+            var _this = this;
+            this.parent = parent;
+            this.onChange = onChange;
+            this.canvLowPass = new Canvas_1.default();
+            this.canvHighPass = new Canvas_1.default();
+            this.lowPassRadius = 6;
+            this.highPassRadius = 2;
+            var secFrequencies = this.secFrequencies = new Section_1.default('Low/high frequency images');
+            // Add low-pass radius input
+            secFrequencies.addParameter('Low-pass radius', this.lowPassRadius, 0, 30, function (val) {
+                _this.lowPassRadius = val;
+                _this.updateLowPass();
+                _this.updateResult();
+            });
+            // Add high-pass radius input
+            secFrequencies.addParameter('High-pass radius', this.highPassRadius, 0, 30, function (val) {
+                _this.highPassRadius = val;
+                _this.updateHighPass();
+                _this.updateResult();
+            });
+            secFrequencies.addItem(this.canvLowPass.element);
+            secFrequencies.addItem(this.canvHighPass.element);
+            parent.appendChild(secFrequencies.element);
+        }
+        /**
+         * Updates intermediary images from input images.
+         * @param {ImageData} imgA First input image.
+         * @param {ImageData} imgB Second input image.
+         */
+        HybridGenerator.prototype.update = function (imgA, imgB) {
+            this.imgA = imgA,
+                this.imgB = imgB;
+            this.updateLowPass();
+            this.updateHighPass();
+            this.updateResult();
+        };
+        /**
+         * Updates low pass image.
+         */
+        HybridGenerator.prototype.updateLowPass = function () {
+            var lowPass = this.lowPass = Operation.lowPass(this.imgA, this.lowPassRadius);
+            this.canvLowPass.drawImage(lowPass);
+        };
+        /**
+         * Updates high pass image.
+         */
+        HybridGenerator.prototype.updateHighPass = function () {
+            var highPass = this.highPass = Operation.highPass(this.imgB, this.highPassRadius);
+            this.canvHighPass.drawImage(highPass);
+        };
+        /**
+         * Propogates result image to parent.
+         */
+        HybridGenerator.prototype.updateResult = function () {
+            var result = Operation.hybridImage(this.lowPass, this.highPass);
+            this.onChange(result);
+        };
+        return HybridGenerator;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = HybridGenerator;
+});
+/**
+ * MorphedGenerator
+ * Displays the morphed image hybrid image generator UI.
+ */
+define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "Section"], function (require, exports, Canvas_2, Filter, Section_2) {
+    "use strict";
+    var MorphedGenerator = (function () {
+        /**
+         * @param {HTMLElement} parent Parent element to add sections to.
+         * @param {Function} onChange Event handler for intermediary image changes.
+         */
+        function MorphedGenerator(parent, onChange) {
+            var _this = this;
+            this.parent = parent;
+            this.onChange = onChange;
+            this.morphSteps = 5;
+            var secMorph = this.secMorph = new Section_2.default('Morphed Images');
+            // Add low-pass radius input
+            secMorph.addParameter('Steps', this.morphSteps, 1, 10, function (val) {
+                _this.morphSteps = val;
+                _this.updateMorph();
+                _this.updateResult();
+            });
+            parent.appendChild(secMorph.element);
+        }
+        /**
+         * Updates intermediary images from input images.
+         * @param {ImageData} imgA First input image.
+         * @param {ImageData} imgB Second input image.
+         */
+        MorphedGenerator.prototype.update = function (imgA, imgB) {
+            this.imgA = imgA,
+                this.imgB = imgB;
+            this.updateMorph();
+            this.updateResult();
+        };
+        /**
+         * Updates intermediary morphed images.
+         */
+        MorphedGenerator.prototype.updateMorph = function () {
+            var steps = this.morphSteps, secMorph = this.secMorph, morphs = this.morphs = [];
+            secMorph.clearItems();
+            for (var i = 0; i < steps; i++) {
+                var intensity = (1 / steps) * i, result = Filter.apply(this.imgA, Filter.dissolve, this.imgB, intensity), canv = new Canvas_2.default(result);
+                secMorph.addItem(canv.element);
+                morphs.push(result);
+            }
+        };
+        /**
+         * Propogates result image to parent.
+         */
+        MorphedGenerator.prototype.updateResult = function () {
+            var result = Filter.apply(this.imgA, Filter.overlay, this.imgB);
+            this.onChange(result);
+        };
+        return MorphedGenerator;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = MorphedGenerator;
+});
+/**
+ * HybridGenerator
+ * Displays the hybrid image generator UI.
+ */
+define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenerator", "Operation", "Section"], function (require, exports, Canvas_3, HybridGenerator_1, MorphedGenerator_1, Operation, Section_3) {
+    "use strict";
+    var App = (function () {
+        function App(parent) {
+            var _this = this;
+            this.count = 0;
+            this.countTotal = 2;
+            this.tabOriginal = 'Original';
+            this.tabMorphed = 'Morphed Image';
+            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), eleHybridTab = this.eleHybridTab = document.createElement('div'), eleMorphedTab = this.eleMorphedTab = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result'), genHybrid = this.genHybrid = new HybridGenerator_1.default(eleHybridTab, this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(eleMorphedTab, this.updateResult.bind(this));
+            // Sections wrap
+            ele.className = 'sections';
+            eleHybridTab.className = eleMorphedTab.className = 'tab-section';
+            // Input section
+            secInput.addUpload('Upload', this.handleUpload.bind(this));
+            secInput.addButton('Swap Images', this.swap.bind(this));
+            secInput.addButton('Reset to Demo', this.showDemo.bind(this));
+            imgA.className = imgB.className = 'canvas';
+            secInput.addItem(imgA);
+            secInput.addItem(imgB);
+            // Method section
+            this.tabsMethod = secMethod.addTabGroup([this.tabOriginal, this.tabMorphed], this.showTab.bind(this));
+            // Result section
+            secResult.addItem(canvResult.element);
+            secResult.addItem(canvResultSmall.element);
+            secResult.addButton('Save Image', function () {
+                var url = _this.imgDataURL;
+                window.location.href = url;
+            });
+            // Add elements
+            eleBody.appendChild(eleHybridTab);
+            eleBody.appendChild(eleMorphedTab);
+            ele.appendChild(secInput.element);
+            ele.appendChild(secMethod.element);
+            ele.appendChild(eleBody);
+            ele.appendChild(secResult.element);
+            parent.appendChild(ele);
+            this.showDemo();
+        }
+        /**
+         * Shows the specified method tab.
+         * @param {string} name Method tab name.
+         */
+        App.prototype.showTab = function (name) {
+            this.tabsMethod.select(name);
+            if (name === this.tabOriginal) {
+                this.eleHybridTab.classList.add('-active');
+                this.eleMorphedTab.classList.remove('-active');
+                this.activeGenerator = this.genHybrid;
+            }
+            else {
+                this.eleHybridTab.classList.remove('-active');
+                this.eleMorphedTab.classList.add('-active');
+                this.activeGenerator = this.genMorphed;
+            }
+            this.resetResult();
+            this.update();
+        };
+        /**
+         * Updates the UI.
+         */
+        App.prototype.update = function () {
+            this.activeGenerator.update(Operation.getImageData(this.imgA), Operation.getImageData(this.imgB));
+        };
+        /**
+         * Updates the result image.
+         * @param {ImageData} result Result image buffer.
+         */
+        App.prototype.updateResult = function (result) {
+            var canvResult = this.canvResult;
+            canvResult.drawImage(result);
+            this.canvResultSmall.drawImage(result);
+            this.imgDataURL = canvResult.element.toDataURL('image/png').replace('image/png', 'image/octet-stream');
+        };
+        /**
+         * Display an error and resets the UI.
+         * @param {string} msg Message to display.
+         */
+        App.prototype.showError = function (msg) {
+            alert(msg);
+            this.reset();
+        };
+        /**
+         * Checks if both input images are loaded.
+         */
+        App.prototype.checkImages = function () {
+            var imgA = this.imgA, imgB = this.imgB;
+            if (++this.count < this.countTotal) {
+                return;
+            }
+            imgA.onload = imgB.onload = null;
+            if (imgA.naturalWidth !== imgB.naturalWidth || imgA.naturalHeight !== imgB.naturalHeight) {
+                this.showError('Please upload images with the same width and height.');
+                return;
+            }
+            if (this.activeGenerator) {
+                this.update();
+            }
+            else {
+                this.showTab(this.tabMorphed);
+            }
+        };
+        /**
+         * Handles upload completion of input images.
+         * @param {FileList} files List of uploaded files.
+         */
+        App.prototype.handleUpload = function (files) {
+            var _this = this;
+            // Input validation
+            var imageExt = /\.(jpe?g|png|gif)$/i;
+            if (files.length === 0) {
+                return;
+            }
+            if (files.length !== 2) {
+                this.showError('Please upload two images.');
+                return;
+            }
+            if (!imageExt.test(files[0].name) || !imageExt.test(files[1].name)) {
+                this.showError('Please upload images (jpg, png or gif).');
+                return;
+            }
+            // Begin read
+            this.reset();
+            var secInput = this.secInputs, readerA = new FileReader(), readerB = new FileReader(), imgA = this.imgA, imgB = this.imgB;
+            readerA.onerror = readerB.onerror = function () {
+                _this.showError('Error reading images. Please try again.');
+            };
+            // Load first image
+            readerA.onload = function () {
+                imgA.onload = _this.checkImages.bind(_this);
+                imgA.src = readerA.result;
+            };
+            readerA.readAsDataURL(files[0]);
+            // Load second image
+            readerB.onload = function () {
+                imgB.onload = _this.checkImages.bind(_this);
+                imgB.src = readerB.result;
+            };
+            readerB.readAsDataURL(files[1]);
+        };
+        /**
+         * Swaps the input images.
+         */
+        App.prototype.swap = function () {
+            if (this.imgA.src === '' || this.imgB.src === '') {
+                return;
+            }
+            var tempA = this.imgA.src, tempB = this.imgB.src;
+            this.imgA.src = tempB;
+            this.imgB.src = tempA;
+            this.update();
+        };
+        /**
+         * Shows the output of demo input images.
+         */
+        App.prototype.showDemo = function () {
+            this.reset();
+            var secInput = this.secInputs, imgA = this.imgA, imgB = this.imgB;
+            imgA.onload = this.checkImages.bind(this);
+            imgA.src = 'images/daniel-radcliffe.png';
+            imgB.onload = this.checkImages.bind(this);
+            imgB.src = 'images/elijah-wood.png';
+        };
+        /**
+         * Resets the result images.
+         */
+        App.prototype.resetResult = function () {
+            this.canvResult.reset();
+            this.canvResultSmall.reset();
+        };
+        /**
+         * Resets the UI.
+         */
+        App.prototype.reset = function () {
+            this.resetResult();
+            this.imgA.src = this.imgB.src = '';
+            this.count = 0;
+        };
+        return App;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = App;
+});
+/**
+ * Main
+ */
+define("main", ["require", "exports", "App"], function (require, exports, App_1) {
+    "use strict";
+    var container = document.getElementById('#app'), app = new App_1.default(container);
+});
+//# sourceMappingURL=main.js.map
