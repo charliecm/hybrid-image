@@ -6,30 +6,38 @@
 import Canvas from './Canvas';
 import * as Filter from './Filter';
 import Generator from './Generator';
+import MorphEditor from './MorphEditor';
 import * as Operation from './Operation';
 import Section from './Section';
 
 export default class MorphedGenerator implements Generator {
 
+    private ele:HTMLElement;
     private imgA:ImageData;
     private imgB:ImageData;
     private morphs:ImageData[];
     private morphSteps:number = 5;
     private secMorph:Section;
+    private secMorphEditor:Section;
+    private morphEditor:MorphEditor;
 
     /**
-     * @param {HTMLElement} parent Parent element to add sections to.
      * @param {Function} onChange Event handler for intermediary image changes.
      */
-	constructor(private parent:HTMLElement, private onChange:Function) {
-        let secMorph:Section = this.secMorph = new Section('Morphed Images');
+	constructor(private onChange:Function) {
+        let ele = this.ele = document.createElement('div'),
+            secMorphEditor:Section = this.secMorphEditor = new Section('Morphed Images Editor'),
+            secMorph:Section = this.secMorph = new Section('Morphed Images'),
+            morphEditor:MorphEditor = this.morphEditor = new MorphEditor();
         // Add low-pass radius input
 		secMorph.addParameter('Steps', this.morphSteps, 1, 10, (val) => {
             this.morphSteps = val;
             this.updateMorph();
             this.updateResult();
 		});
-        parent.appendChild(secMorph.element);
+        secMorphEditor.addItem(morphEditor.element);
+        ele.appendChild(secMorphEditor.element);
+        ele.appendChild(secMorph.element);
 	}
 
     /**
@@ -40,6 +48,7 @@ export default class MorphedGenerator implements Generator {
     update(imgA:ImageData, imgB:ImageData) {
         this.imgA = imgA,
         this.imgB = imgB;
+        this.morphEditor.updateSources(imgA, imgB);
         this.updateMorph();
         this.updateResult();
     }
@@ -67,6 +76,10 @@ export default class MorphedGenerator implements Generator {
     private updateResult() {
         let result:ImageData = Filter.apply(this.imgA, Filter.overlay, this.imgB);
         this.onChange(result);
+    }
+
+    get element() {
+        return this.ele;
     }
     
 }

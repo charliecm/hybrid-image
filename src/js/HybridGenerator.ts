@@ -10,6 +10,7 @@ import Section from './Section';
 
 export default class HybridGenerator implements Generator {
 
+    private ele:HTMLElement;
     private imgA:ImageData;
     private imgB:ImageData;
     private lowPass:ImageData;
@@ -21,11 +22,11 @@ export default class HybridGenerator implements Generator {
     private highPassRadius:number = 2;
 
     /**
-     * @param {HTMLElement} parent Parent element to add sections to.
      * @param {Function} onChange Event handler for intermediary image changes.
      */
-	constructor(private parent:HTMLElement, private onChange:Function) {
-        let secFrequencies:Section = this.secFrequencies = new Section('Low/high frequency images');
+	constructor(private onChange:Function) {
+        let ele = this.ele = document.createElement('div'),
+            secFrequencies:Section = this.secFrequencies = new Section('Low/high frequency images');
         // Add low-pass radius input
 		secFrequencies.addParameter('Low-pass radius', this.lowPassRadius, 0, 30, (val) => {
             this.lowPassRadius = val;
@@ -40,7 +41,7 @@ export default class HybridGenerator implements Generator {
 		});
         secFrequencies.addItem(this.canvLowPass.element);
         secFrequencies.addItem(this.canvHighPass.element);
-        parent.appendChild(secFrequencies.element);
+        ele.appendChild(secFrequencies.element);
 	}
 
     /**
@@ -78,6 +79,10 @@ export default class HybridGenerator implements Generator {
     private updateResult() {
         let result:ImageData = Operation.hybridImage(this.lowPass, this.highPass);
         this.onChange(result);
+    }
+
+    get element() {
+        return this.ele;
     }
     
 }

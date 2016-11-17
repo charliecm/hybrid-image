@@ -36,8 +36,6 @@ export default class App {
 	constructor(parent:HTMLElement) {
         let ele:HTMLElement = this.ele = document.createElement('article'),
             eleBody:HTMLElement = this.eleBody = document.createElement('div'),
-            eleHybridTab:HTMLElement = this.eleHybridTab =  document.createElement('div'),
-            eleMorphedTab:HTMLElement = this.eleMorphedTab =  document.createElement('div'),
             imgA = this.imgA = document.createElement('img'),
             imgB = this.imgB = document.createElement('img'),
             canvResult = this.canvResult = new Canvas(),
@@ -45,11 +43,12 @@ export default class App {
             secInput:Section = this.secInputs = new Section('Input images', 'Please select two images with the same width and height.'),
             secMethod:Section = this.secMethod = new Section('Method', 'Choose which method to generate a hybrid image with.', false),
 			secResult:Section = this.secResult = new Section('Result'),
-            genHybrid = this.genHybrid = new HybridGenerator(eleHybridTab, this.updateResult.bind(this)),
-            genMorphed = this.genMorphed = new MorphedGenerator(eleMorphedTab, this.updateResult.bind(this));
+            genHybrid = this.genHybrid = new HybridGenerator(this.updateResult.bind(this)),
+            genMorphed = this.genMorphed = new MorphedGenerator(this.updateResult.bind(this)),
+            eleHybridTab = this.eleHybridTab = genHybrid.element,
+            eleMorphedTab = this.eleMorphedTab = genMorphed.element;
         // Sections wrap
         ele.className = 'sections';
-        eleHybridTab.className = eleMorphedTab.className = 'tab-section';
         // Input section
         secInput.addUpload('Upload', this.handleUpload.bind(this));
 		secInput.addButton('Swap Images', this.swap.bind(this));
@@ -67,6 +66,7 @@ export default class App {
             window.location.href = url;
         });
         // Add elements
+        eleHybridTab.className = eleMorphedTab.className = 'tab-section';
         eleBody.appendChild(eleHybridTab);
         eleBody.appendChild(eleMorphedTab);
         ele.appendChild(secInput.element);
