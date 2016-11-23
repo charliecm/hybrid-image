@@ -1229,6 +1229,7 @@ define("MorphPoint", ["require", "exports"], function (require, exports) {
 });
 /**
  * MorphEditor
+ * Displays two canvases that enable addition and  manipulation of control points for image morph.
  */
 define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, exports, MorphPoint_1) {
     "use strict";
@@ -1244,6 +1245,11 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
             ele.appendChild(canvA);
             ele.appendChild(canvB);
         }
+        /**
+         * Binds the canvas interaction events.
+         * @param {HTMLCanvasElement} canvas Target canvas element.
+         * @param {boolean} isA Is manipulating source A points.
+         */
         MorphEditor.prototype.bindCanvasEvents = function (canv, isA) {
             var _this = this;
             canv.onmousedown = function (event) {
@@ -1280,6 +1286,9 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
                 }
             };
         };
+        /**
+         * Updates the canvas.
+         */
         MorphEditor.prototype.updateCanvas = function () {
             var cA = this.contextA, cB = this.contextB, points = this.points;
             cA.putImageData(this.imgA, 0, 0);
@@ -1289,6 +1298,11 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
                 points[i].draw(false, cB);
             }
         };
+        /**
+         * Updates the source images.
+         * @param {ImageData} imgA First source image.
+         * @param {ImageData} imgB Second source image.
+         */
         MorphEditor.prototype.updateSources = function (imgA, imgB) {
             this.imgA = imgA;
             this.imgB = imgB;
@@ -1296,6 +1310,21 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
             this.canvA.height = this.canvB.height = imgA.height;
             this.contextA.putImageData(imgA, 0, 0);
             this.contextB.putImageData(imgB, 0, 0);
+        };
+        /**
+         * Returns the control points in a format usable by ImgWarper.
+         * @return {any} Object containing the arrays a and b, of ImgWarp.Point.
+         */
+        MorphEditor.prototype.getPoints = function () {
+            var points = this.points, output = {
+                a: [],
+                b: []
+            };
+            for (var i = 0; i < points.length; i++) {
+                output.a.push(new ImgWarper.Point(points[i].xA, points[i].yA));
+                output.b.push(new ImgWarper.Point(points[i].xB, points[i].yB));
+            }
+            return output;
         };
         Object.defineProperty(MorphEditor.prototype, "element", {
             get: function () {
@@ -1323,13 +1352,15 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var _this = this;
             this.onChange = onChange;
             this.morphSteps = 5;
-            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor'), secMorph = this.secMorph = new Section_2.default('Morphed Images'), morphEditor = this.morphEditor = new MorphEditor_1.default();
+            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), morphEditor = this.morphEditor = new MorphEditor_1.default();
             // Add low-pass radius input
             secMorph.addParameter('Steps', this.morphSteps, 1, 10, function (val) {
                 _this.morphSteps = val;
                 _this.updateMorph();
                 _this.updateResult();
             });
+            secMorph.addButton('Update', this.updateMorph.bind(this));
+            // Insert elements
             secMorphEditor.addItem(morphEditor.element);
             ele.appendChild(secMorphEditor.element);
             ele.appendChild(secMorph.element);
@@ -1350,10 +1381,20 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
          * Updates intermediary morphed images.
          */
         MorphedGenerator.prototype.updateMorph = function () {
-            var steps = this.morphSteps, secMorph = this.secMorph, morphs = this.morphs = [];
+            var steps = this.morphSteps, secMorph = this.secMorph, morphs = this.morphs = [], points = this.morphEditor.getPoints(), morpher = this.morpher = new ImgWarper.Animator({
+                imgData: this.imgA,
+                oriPoints: points.a
+            }, {
+                imgData: this.imgB,
+                oriPoints: points.b
+            });
             secMorph.clearItems();
-            for (var i = 0; i < steps; i++) {
-                var intensity = (1 / steps) * i, result = Filter.apply(this.imgA, Filter.dissolve, this.imgB, intensity), canv = new Canvas_2.default(result);
+            if (!points.a.length) {
+                return;
+            }
+            morpher.generate(steps + 1);
+            for (var i = 0; i < morpher.frames.length; i++) {
+                var result = morpher.frames[i], canv = new Canvas_2.default(result);
                 secMorph.addItem(canv.element);
                 morphs.push(result);
             }

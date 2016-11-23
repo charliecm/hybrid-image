@@ -20,6 +20,7 @@ export default class MorphedGenerator implements Generator {
     private secMorph:Section;
     private secMorphEditor:Section;
     private morphEditor:MorphEditor;
+    private morpher:ImgWarper.Animator;
 
     /**
      * @param {Function} onChange Event handler for intermediary image changes.
@@ -27,7 +28,7 @@ export default class MorphedGenerator implements Generator {
 	constructor(private onChange:Function) {
         let ele = this.ele = document.createElement('div'),
             secMorphEditor:Section = this.secMorphEditor = new Section('Morphed Images Editor'),
-            secMorph:Section = this.secMorph = new Section('Morphed Images'),
+            secMorph:Section = this.secMorph = new Section('Morphed Images', 'Add control points using the above editor, then press Update.'),
             morphEditor:MorphEditor = this.morphEditor = new MorphEditor();
         // Add low-pass radius input
 		secMorph.addParameter('Steps', this.morphSteps, 1, 10, (val) => {
@@ -35,6 +36,8 @@ export default class MorphedGenerator implements Generator {
             this.updateMorph();
             this.updateResult();
 		});
+        secMorph.addButton('Update', this.updateMorph.bind(this));
+        // Insert elements
         secMorphEditor.addItem(morphEditor.element);
         ele.appendChild(secMorphEditor.element);
         ele.appendChild(secMorph.element);
@@ -57,13 +60,27 @@ export default class MorphedGenerator implements Generator {
      * Updates intermediary morphed images.
      */
     updateMorph() {
-        let steps = this.morphSteps,
+        let steps:number = this.morphSteps,
             secMorph:Section = this.secMorph,
-            morphs:ImageData[] = this.morphs = [];
+            morphs:ImageData[] = this.morphs = [],
+            points:any = this.morphEditor.getPoints(),
+            morpher:ImgWarper.Animator = this.morpher = new ImgWarper.Animator(
+                {
+                    imgData: this.imgA,
+                    oriPoints: points.a
+                },
+                {
+                    imgData: this.imgB,
+                    oriPoints: points.b
+                }
+            );
         secMorph.clearItems();
-        for (let i = 0; i < steps; i++) {
-            let intensity:number = (1/steps) * i,
-                result:ImageData = Filter.apply(this.imgA, Filter.dissolve, this.imgB, intensity),
+        if (!points.a.length) {
+            return;
+        }
+        morpher.generate(steps + 1);
+        for (let i = 0; i < morpher.frames.length; i++) {
+            let result:ImageData = morpher.frames[i],
                 canv:Canvas = new Canvas(result);
             secMorph.addItem(canv.element);
             morphs.push(result);

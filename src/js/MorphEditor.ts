@@ -1,5 +1,6 @@
 /**
  * MorphEditor
+ * Displays two canvases that enable addition and  manipulation of control points for image morph.
  */
 
 import MorphPoint from './MorphPoint';
@@ -29,6 +30,11 @@ export default class MorphEditor {
         ele.appendChild(canvB);
     }
 
+    /**
+     * Binds the canvas interaction events.
+     * @param {HTMLCanvasElement} canvas Target canvas element.
+     * @param {boolean} isA Is manipulating source A points.
+     */
     bindCanvasEvents(canv:HTMLCanvasElement, isA:boolean) {
         canv.onmousedown = (event) => {
             let scale = canv.width / canv.clientWidth,
@@ -73,6 +79,9 @@ export default class MorphEditor {
         }
     }
 
+    /**
+     * Updates the canvas.
+     */
     updateCanvas() {
         let cA:CanvasRenderingContext2D = this.contextA,
             cB:CanvasRenderingContext2D = this.contextB,
@@ -85,6 +94,11 @@ export default class MorphEditor {
         }
     }
 
+    /**
+     * Updates the source images.
+     * @param {ImageData} imgA First source image.
+     * @param {ImageData} imgB Second source image.
+     */
     updateSources(imgA:ImageData, imgB:ImageData) {
         this.imgA = imgA;
         this.imgB = imgB;
@@ -92,6 +106,23 @@ export default class MorphEditor {
         this.canvA.height = this.canvB.height = imgA.height;
         this.contextA.putImageData(imgA, 0, 0);
         this.contextB.putImageData(imgB, 0, 0);
+    }
+
+    /**
+     * Returns the control points in a format usable by ImgWarper.
+     * @return {any} Object containing the arrays a and b, of ImgWarp.Point.
+     */
+    getPoints():any {
+        let points:MorphPoint[] = this.points,
+            output = {
+                a: [],
+                b: []
+            }
+        for (let i = 0; i < points.length; i++) {
+            output.a.push(new ImgWarper.Point(points[i].xA, points[i].yA));
+            output.b.push(new ImgWarper.Point(points[i].xB, points[i].yB));
+        }
+        return output;
     }
 
     get element() {

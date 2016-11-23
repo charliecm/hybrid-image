@@ -11,7 +11,7 @@
     "watch:ts": "tsc -p . --watch",
     "build:css": "node-sass src/css -o dist/css",
     "watch:css": "node-sass -w src/css -o dist/css",
-    "build:require": "cp src/js/require.js dist/js",
+    "build:js": "cp src/js/*.js dist/js",
     "livereload": "livereload dist",
     "server": "http-server dist -p 8080 -o",
     "build": "npm run clean && run-s build:*",
