@@ -132,6 +132,45 @@ export default class Section {
 	}
 
 	/**
+	 * Adds a download button to the control bar.
+	 * @param {string} label Label of the button.
+	 * @param {string} data Data URI of the file to download.
+	 * @param {string} filename File name.
+	 * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
+	 */
+	addDownload(label:string, data:string, filename:string) {
+		let ele:HTMLElement = document.createElement('div'),
+			eleInput:HTMLAnchorElement = document.createElement('a'),
+			setData = (data) => {
+				eleInput.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data);
+			},
+			setFilename = (filename) => {
+				eleInput.download = filename;
+			},
+			destroy:Function = () => {
+				ele.parentNode.removeChild(ele);
+			},
+			instance = {
+				element: ele,
+				label,
+				setData,
+				setFilename,
+				destroy
+			};
+		// Container
+		ele.className = 'control';
+		// Input
+		eleInput.className = 'control__button';
+		eleInput.textContent = label;
+		eleInput.download = filename;
+		setData(data);
+		ele.appendChild(eleInput);
+		// Add to DOM and model
+		this.addControl(instance);
+		return instance;
+	}
+
+	/**
 	 * Adds a button to the control bar.
 	 * @param {string} label Label of the button.
 	 * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
