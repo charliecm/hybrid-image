@@ -1385,8 +1385,7 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
             this.imgB = imgB;
             this.canvA.width = this.canvB.width = imgA.width;
             this.canvA.height = this.canvB.height = imgA.height;
-            this.contextA.putImageData(imgA, 0, 0);
-            this.contextB.putImageData(imgB, 0, 0);
+            this.updateCanvas();
         };
         /**
          * Removes all the points.
