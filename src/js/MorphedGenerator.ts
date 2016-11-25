@@ -21,16 +21,19 @@ export default class MorphedGenerator implements Generator {
     private secMorphEditor:Section;
     private morphEditor:MorphEditor;
     private morpher:ImgWarper.Animator;
+    private btnExport:any;
 
     /**
      * @param {Function} onChange Event handler for intermediary image changes.
      */
 	constructor(private onChange:Function) {
         let ele = this.ele = document.createElement('div'),
-            secMorphEditor:Section = this.secMorphEditor = new Section('Morphed Images Editor'),
+            secMorphEditor:Section = this.secMorphEditor = new Section('Morphed Images Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'),
             secMorph:Section = this.secMorph = new Section('Morphed Images', 'Add control points using the above editor, then press Update.'),
-            morphEditor:MorphEditor = this.morphEditor = new MorphEditor();
-        // Add low-pass radius input
+            morphEditor:MorphEditor = this.morphEditor = new MorphEditor(this.updateDownloadData.bind(this));
+        secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
+        secMorphEditor.addUpload('Import', this.importPoints.bind(this));
+        this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
 		secMorph.addParameter('Steps', this.morphSteps, 1, 10, (val) => {
             this.morphSteps = val;
             this.updateMorph();
@@ -42,6 +45,58 @@ export default class MorphedGenerator implements Generator {
         ele.appendChild(secMorphEditor.element);
         ele.appendChild(secMorph.element);
 	}
+
+    /**
+     * Updates the control points export button data.
+     */
+    private updateDownloadData() {
+        this.btnExport.setData(this.morphEditor.getPointsAsJSON());
+    }
+
+    /**
+     * Handles upload completion of imported control points JSON.
+     * @param {FileList} files List of uploaded files.
+     */
+    private importPoints(files:FileList) {
+        // Input validation
+        if (files.length === 0) {
+            return;
+        }
+        // Begin read
+        let reader:FileReader = new FileReader(),
+            editor:MorphEditor = this.morphEditor;
+        reader.onerror = () => {
+            alert('Error reading the file. Please try again.');
+            reader.onload = reader.onerror = null;
+        }
+        reader.onload = () => {
+            try {
+                let result = JSON.parse(reader.result);
+                if (result.length) {
+                    editor.clear();
+                    for (let i = 0; i < result.length; i++) {
+                        if (result[i].hasOwnProperty('xA') && result[i].hasOwnProperty('yA') && result[i].hasOwnProperty('xB') && result[i].hasOwnProperty('yB')) {
+                            editor.addPoint(result[i].xA, result[i].yA, result[i].xB, result[i].yB);
+                        }
+                    }
+                    editor.updateCanvas();
+                } else {
+                    alert('Invalid JSON format.');
+                }
+            } catch(e) {
+                alert('Please upload a valid JSON.');
+            }
+            reader.onload = reader.onerror = null;
+        };
+        reader.readAsText(files[0]);
+    }
+
+    /**
+     * Removes all control points.
+     */
+    private clearPoints() {
+        this.morphEditor.clear();
+    }
 
     /**
      * Updates intermediary images from input images.

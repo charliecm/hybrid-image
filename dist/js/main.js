@@ -899,6 +899,39 @@ define("Section", ["require", "exports", "Helper"], function (require, exports, 
             return instance;
         };
         /**
+         * Adds a download button to the control bar.
+         * @param {string} label Label of the button.
+         * @param {string} data Data URI of the file to download.
+         * @param {string} filename File name.
+         * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
+         */
+        Section.prototype.addDownload = function (label, data, filename) {
+            var ele = document.createElement('div'), eleInput = document.createElement('a'), setData = function (data) {
+                eleInput.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data);
+            }, setFilename = function (filename) {
+                eleInput.download = filename;
+            }, destroy = function () {
+                ele.parentNode.removeChild(ele);
+            }, instance = {
+                element: ele,
+                label: label,
+                setData: setData,
+                setFilename: setFilename,
+                destroy: destroy
+            };
+            // Container
+            ele.className = 'control';
+            // Input
+            eleInput.className = 'control__button';
+            eleInput.textContent = label;
+            eleInput.download = filename;
+            setData(data);
+            ele.appendChild(eleInput);
+            // Add to DOM and model
+            this.addControl(instance);
+            return instance;
+        };
+        /**
          * Adds a button to the control bar.
          * @param {string} label Label of the button.
          * @param {EventListenerOrEventListenerObject} onClick Event handler for clicking the button.
@@ -1008,7 +1041,8 @@ define("Section", ["require", "exports", "Helper"], function (require, exports, 
          * @param {string} label Label for the input.
          * @param {Function} onUpload Event handler for file upload.
          */
-        Section.prototype.addUpload = function (label, onUpload) {
+        Section.prototype.addUpload = function (label, onUpload, isMultiple) {
+            if (isMultiple === void 0) { isMultiple = false; }
             var ele = document.createElement('div'), eleWrap = document.createElement('div'), eleLabel = document.createElement('span'), eleInput = document.createElement('input'), onChange = function () {
                 onUpload(this.files);
             }, destroy = function () {
@@ -1026,7 +1060,7 @@ define("Section", ["require", "exports", "Helper"], function (require, exports, 
             // Input
             eleInput.className = 'control__upload';
             eleInput.type = 'file';
-            eleInput.multiple = true;
+            eleInput.multiple = isMultiple;
             eleInput.addEventListener('change', onChange);
             // Wrap
             eleWrap.className = 'control__upload-wrap';
@@ -1160,7 +1194,7 @@ define("MorphPoint", ["require", "exports"], function (require, exports) {
          */
         function MorphPoint(x, y) {
             this.isSelected = false;
-            this.radius = 5;
+            this.radius = 3;
             this.radiusSelect = 10;
             this.xA = this.xB = x;
             this.yA = this.yB = y;
@@ -1186,19 +1220,34 @@ define("MorphPoint", ["require", "exports"], function (require, exports) {
          * @param {boolean} isA Draw point A, otherwise point B.
          * @param {CanvasRenderingContext2D} c Canvas rendering context.
          */
-        MorphPoint.prototype.draw = function (isA, c) {
-            var xx = (isA) ? this.xA : this.xB, yy = (isA) ? this.yA : this.yB, r = this.radius;
+        MorphPoint.prototype.draw = function (isA, c, scale) {
+            if (scale === void 0) { scale = 1; }
+            var xx = (isA) ? this.xA : this.xB, yy = (isA) ? this.yA : this.yB, r = this.radius * scale;
             c.beginPath();
+            c.ellipse(xx, yy, r, r, 0, 0, 2 * Math.PI);
+            c.strokeStyle = '';
+            c.lineWidth = 0;
             if (this.isSelected) {
-                c.fillStyle = 'yellow';
+                c.strokeStyle = 'black';
+                c.lineWidth = 6 * scale;
+                c.stroke();
                 c.strokeStyle = 'white';
+                c.lineWidth = 3 * scale;
+                c.stroke();
+                c.fillStyle = '#19CD17';
+                c.fill();
             }
             else {
+                c.strokeStyle = 'black';
+                c.lineWidth = 3 * scale;
+                c.stroke();
+                c.strokeStyle = 'white';
+                c.lineWidth = 1 * scale;
+                c.stroke();
                 c.fillStyle = 'red';
-                c.strokeStyle = '';
+                c.fill();
             }
-            c.ellipse(xx, yy, r, r, 0, 0, 2 * Math.PI);
-            c.fill();
+            c.closePath();
         };
         /**
          * Selects the point.
@@ -1234,17 +1283,36 @@ define("MorphPoint", ["require", "exports"], function (require, exports) {
 define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, exports, MorphPoint_1) {
     "use strict";
     var MorphEditor = (function () {
-        function MorphEditor() {
+        /**
+         * @param {Function} onChange Event handler for control point changes.
+         */
+        function MorphEditor(onChange) {
             this.points = [];
             var ele = this.ele = document.createElement('div'), canvA = this.canvA = document.createElement('canvas'), canvB = this.canvB = document.createElement('canvas');
+            this.onChange = onChange;
             canvA.className = canvB.className = 'canvas';
             this.contextA = canvA.getContext('2d'),
                 this.contextB = canvB.getContext('2d');
             this.bindCanvasEvents(canvA, true);
             this.bindCanvasEvents(canvB, false);
+            window.addEventListener('keyup', this.handleRemovePointKey.bind(this));
             ele.appendChild(canvA);
             ele.appendChild(canvB);
         }
+        /**
+         * Removes a point and refresh the canvas.
+         */
+        MorphEditor.prototype.handleRemovePointKey = function (event) {
+            var point = this.selectedPoint, points = this.points;
+            if (event.keyCode !== 8) {
+                return;
+            }
+            if (!point) {
+                return;
+            }
+            points.splice(points.indexOf(point), 1);
+            this.updateCanvas();
+        };
         /**
          * Binds the canvas interaction events.
          * @param {HTMLCanvasElement} canvas Target canvas element.
@@ -1252,6 +1320,7 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
          */
         MorphEditor.prototype.bindCanvasEvents = function (canv, isA) {
             var _this = this;
+            var isMouseDown = false;
             canv.onmousedown = function (event) {
                 var scale = canv.width / canv.clientWidth, x = (event.pageX - canv.offsetLeft) * scale, y = (event.pageY - canv.offsetTop) * scale, points = _this.points, hasSelect = false, selectedPoint = _this.selectedPoint;
                 if (selectedPoint) {
@@ -1267,36 +1336,44 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
                     }
                 }
                 if (!hasSelect) {
-                    points.push(new MorphPoint_1.default(x, y));
+                    _this.addPoint(x, y);
                 }
+                isMouseDown = true;
                 _this.updateCanvas();
             };
             canv.onmousemove = function (event) {
                 var scale = canv.width / canv.clientWidth, x = (event.pageX - canv.offsetLeft) * scale, y = (event.pageY - canv.offsetTop) * scale, selectedPoint = _this.selectedPoint;
-                if (selectedPoint) {
+                if (isMouseDown && selectedPoint) {
                     selectedPoint.update(isA, x, y);
                     _this.updateCanvas();
                 }
             };
             canv.onmouseup = function (event) {
-                var selectedPoint = _this.selectedPoint;
-                if (selectedPoint) {
-                    selectedPoint.unselect();
-                    _this.selectedPoint = null;
-                }
+                isMouseDown = false;
             };
+        };
+        /**
+         * Adds a new control point.
+         */
+        MorphEditor.prototype.addPoint = function (xA, yA, xB, yB) {
+            var point = new MorphPoint_1.default(xA, yA);
+            if (xB !== null && yB !== null) {
+                point.update(false, xB, yB);
+            }
+            this.points.push(point);
         };
         /**
          * Updates the canvas.
          */
         MorphEditor.prototype.updateCanvas = function () {
-            var cA = this.contextA, cB = this.contextB, points = this.points;
+            var canv = this.canvA, scale = canv.width / canv.clientWidth, cA = this.contextA, cB = this.contextB, points = this.points;
             cA.putImageData(this.imgA, 0, 0);
             cB.putImageData(this.imgB, 0, 0);
             for (var i = 0; i < points.length; i++) {
-                points[i].draw(true, cA);
-                points[i].draw(false, cB);
+                points[i].draw(true, cA, scale);
+                points[i].draw(false, cB, scale);
             }
+            this.onChange();
         };
         /**
          * Updates the source images.
@@ -1310,6 +1387,14 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
             this.canvA.height = this.canvB.height = imgA.height;
             this.contextA.putImageData(imgA, 0, 0);
             this.contextB.putImageData(imgB, 0, 0);
+        };
+        /**
+         * Removes all the points.
+         */
+        MorphEditor.prototype.clear = function () {
+            this.points = [];
+            this.selectedPoint = null;
+            this.updateCanvas();
         };
         /**
          * Returns the control points in a format usable by ImgWarper.
@@ -1326,7 +1411,24 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
             }
             return output;
         };
+        /**
+         * Returns the control points as an exportable JSON.
+         * @return {string} JSON string.
+         */
+        MorphEditor.prototype.getPointsAsJSON = function () {
+            var points = this.points, output = [];
+            for (var i = 0; i < points.length; i++) {
+                output.push({
+                    xA: points[i].xA,
+                    yA: points[i].yA,
+                    xB: points[i].xB,
+                    yB: points[i].yB
+                });
+            }
+            return JSON.stringify(output);
+        };
         Object.defineProperty(MorphEditor.prototype, "element", {
+            // TODO: destroy()
             get: function () {
                 return this.ele;
             },
@@ -1352,8 +1454,10 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var _this = this;
             this.onChange = onChange;
             this.morphSteps = 5;
-            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), morphEditor = this.morphEditor = new MorphEditor_1.default();
-            // Add low-pass radius input
+            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateDownloadData.bind(this));
+            secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
+            secMorphEditor.addUpload('Import', this.importPoints.bind(this));
+            this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
             secMorph.addParameter('Steps', this.morphSteps, 1, 10, function (val) {
                 _this.morphSteps = val;
                 _this.updateMorph();
@@ -1365,6 +1469,56 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             ele.appendChild(secMorphEditor.element);
             ele.appendChild(secMorph.element);
         }
+        /**
+         * Updates the control points export button data.
+         */
+        MorphedGenerator.prototype.updateDownloadData = function () {
+            this.btnExport.setData(this.morphEditor.getPointsAsJSON());
+        };
+        /**
+         * Handles upload completion of imported control points JSON.
+         * @param {FileList} files List of uploaded files.
+         */
+        MorphedGenerator.prototype.importPoints = function (files) {
+            // Input validation
+            if (files.length === 0) {
+                return;
+            }
+            // Begin read
+            var reader = new FileReader(), editor = this.morphEditor;
+            reader.onerror = function () {
+                alert('Error reading the file. Please try again.');
+                reader.onload = reader.onerror = null;
+            };
+            reader.onload = function () {
+                try {
+                    var result = JSON.parse(reader.result);
+                    if (result.length) {
+                        editor.clear();
+                        for (var i = 0; i < result.length; i++) {
+                            if (result[i].hasOwnProperty('xA') && result[i].hasOwnProperty('yA') && result[i].hasOwnProperty('xB') && result[i].hasOwnProperty('yB')) {
+                                editor.addPoint(result[i].xA, result[i].yA, result[i].xB, result[i].yB);
+                            }
+                        }
+                        editor.updateCanvas();
+                    }
+                    else {
+                        alert('Invalid JSON format.');
+                    }
+                }
+                catch (e) {
+                    alert('Please upload a valid JSON.');
+                }
+                reader.onload = reader.onerror = null;
+            };
+            reader.readAsText(files[0]);
+        };
+        /**
+         * Removes all control points.
+         */
+        MorphedGenerator.prototype.clearPoints = function () {
+            this.morphEditor.clear();
+        };
         /**
          * Updates intermediary images from input images.
          * @param {ImageData} imgA First input image.
@@ -1426,7 +1580,6 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
     "use strict";
     var App = (function () {
         function App(parent) {
-            var _this = this;
             this.count = 0;
             this.countTotal = 2;
             this.tabOriginal = 'Original';
@@ -1435,7 +1588,7 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
             // Sections wrap
             ele.className = 'sections';
             // Input section
-            secInput.addUpload('Upload', this.handleUpload.bind(this));
+            secInput.addUpload('Upload', this.handleUpload.bind(this), true);
             secInput.addButton('Swap Images', this.swap.bind(this));
             secInput.addButton('Reset to Demo', this.showDemo.bind(this));
             imgA.className = imgB.className = 'canvas';
@@ -1446,10 +1599,7 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
             // Result section
             secResult.addItem(canvResult.element);
             secResult.addItem(canvResultSmall.element);
-            secResult.addButton('Save Image', function () {
-                var url = _this.imgDataURL;
-                window.location.href = url;
-            });
+            this.btnSaveImage = secResult.addDownload('Save Image', '', 'result.png');
             // Add elements
             eleHybridTab.className = eleMorphedTab.className = 'tab-section';
             eleBody.appendChild(eleHybridTab);
@@ -1494,7 +1644,7 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
             var canvResult = this.canvResult;
             canvResult.drawImage(result);
             this.canvResultSmall.drawImage(result);
-            this.imgDataURL = canvResult.element.toDataURL('image/png').replace('image/png', 'image/octet-stream');
+            this.btnSaveImage.setData(canvResult.element.toDataURL('image/png').replace('image/png', 'image/octet-stream'));
         };
         /**
          * Display an error and resets the UI.
@@ -1548,17 +1698,20 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
             var secInput = this.secInputs, readerA = new FileReader(), readerB = new FileReader(), imgA = this.imgA, imgB = this.imgB;
             readerA.onerror = readerB.onerror = function () {
                 _this.showError('Error reading images. Please try again.');
+                readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
             };
             // Load first image
             readerA.onload = function () {
                 imgA.onload = _this.checkImages.bind(_this);
                 imgA.src = readerA.result;
+                readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
             };
             readerA.readAsDataURL(files[0]);
             // Load second image
             readerB.onload = function () {
                 imgB.onload = _this.checkImages.bind(_this);
                 imgB.src = readerB.result;
+                readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
             };
             readerB.readAsDataURL(files[1]);
         };

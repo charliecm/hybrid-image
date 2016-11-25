@@ -16,18 +16,40 @@ export default class MorphEditor {
     private contextB:CanvasRenderingContext2D;
     private points:MorphPoint[] = [];
     private selectedPoint:MorphPoint;
+    private onChange:Function;
 
-    constructor() {
+    /**
+     * @param {Function} onChange Event handler for control point changes.
+     */
+    constructor(onChange:Function) {
         let ele:HTMLElement = this.ele = document.createElement('div'),
             canvA:HTMLCanvasElement = this.canvA = document.createElement('canvas'),
             canvB:HTMLCanvasElement = this.canvB = document.createElement('canvas');    
+        this.onChange = onChange;
         canvA.className = canvB.className = 'canvas';
         this.contextA = canvA.getContext('2d'),
         this.contextB = canvB.getContext('2d');
         this.bindCanvasEvents(canvA, true);
         this.bindCanvasEvents(canvB, false);
+        window.addEventListener('keyup', this.handleRemovePointKey.bind(this));
         ele.appendChild(canvA);
         ele.appendChild(canvB);
+    }
+
+    /**
+     * Removes a point and refresh the canvas.
+     */
+    handleRemovePointKey(event:KeyboardEvent) {
+        let point = this.selectedPoint,
+            points = this.points;
+        if (event.keyCode !== 8) {
+            return;
+        }
+        if (!point) {
+            return;
+        }
+        points.splice(points.indexOf(point), 1);
+        this.updateCanvas();
     }
 
     /**
@@ -36,6 +58,7 @@ export default class MorphEditor {
      * @param {boolean} isA Is manipulating source A points.
      */
     bindCanvasEvents(canv:HTMLCanvasElement, isA:boolean) {
+        let isMouseDown:boolean = false;
         canv.onmousedown = (event) => {
             let scale = canv.width / canv.clientWidth,
                 x:number = (event.pageX - canv.offsetLeft) * scale,
@@ -56,8 +79,9 @@ export default class MorphEditor {
                 }
             }
             if (!hasSelect) {
-                points.push(new MorphPoint(x, y));
+                this.addPoint(x, y);
             }
+            isMouseDown = true;
             this.updateCanvas();
         };
         canv.onmousemove = (event) => {
@@ -65,33 +89,43 @@ export default class MorphEditor {
                 x:number = (event.pageX - canv.offsetLeft) * scale,
                 y:number = (event.pageY - canv.offsetTop) * scale,
                 selectedPoint = this.selectedPoint;
-            if (selectedPoint) {
+            if (isMouseDown && selectedPoint) {
                 selectedPoint.update(isA, x, y);
                 this.updateCanvas();
             }
         }
         canv.onmouseup = (event) => {
-            let selectedPoint = this.selectedPoint;
-            if (selectedPoint) {
-                selectedPoint.unselect();
-                this.selectedPoint = null;
-            }
+            isMouseDown = false;
         }
+    }
+
+    /**
+     * Adds a new control point.
+     */
+    addPoint(xA:number, yA:number, xB?:number, yB?:number) {
+        let point = new MorphPoint(xA, yA)
+        if (xB !== null && yB !== null) {
+            point.update(false, xB, yB);
+        }
+        this.points.push(point);
     }
 
     /**
      * Updates the canvas.
      */
     updateCanvas() {
-        let cA:CanvasRenderingContext2D = this.contextA,
+        let canv = this.canvA,
+            scale = canv.width / canv.clientWidth,
+            cA:CanvasRenderingContext2D = this.contextA,
             cB:CanvasRenderingContext2D = this.contextB,
             points:MorphPoint[] = this.points;
         cA.putImageData(this.imgA, 0, 0);
         cB.putImageData(this.imgB, 0, 0);
         for (let i = 0; i < points.length; i++) {
-            points[i].draw(true, cA);
-            points[i].draw(false, cB);
+            points[i].draw(true, cA, scale);
+            points[i].draw(false, cB, scale);
         }
+        this.onChange();
     }
 
     /**
@@ -106,6 +140,15 @@ export default class MorphEditor {
         this.canvA.height = this.canvB.height = imgA.height;
         this.contextA.putImageData(imgA, 0, 0);
         this.contextB.putImageData(imgB, 0, 0);
+    }
+
+    /**
+     * Removes all the points.
+     */
+    clear() {
+        this.points = [];
+        this.selectedPoint = null;
+        this.updateCanvas();
     }
 
     /**
@@ -124,6 +167,26 @@ export default class MorphEditor {
         }
         return output;
     }
+
+    /**
+     * Returns the control points as an exportable JSON.
+     * @return {string} JSON string.
+     */
+    getPointsAsJSON():any {
+        let points:MorphPoint[] = this.points,
+            output = [];
+        for (let i = 0; i < points.length; i++) {
+            output.push({
+                xA: points[i].xA,
+                yA: points[i].yA,
+                xB: points[i].xB,
+                yB: points[i].yB
+            });
+        }
+        return JSON.stringify(output);
+    }
+
+    // TODO: destroy()
 
     get element() {
         return this.ele;
