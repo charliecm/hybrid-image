@@ -1357,7 +1357,7 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
          */
         MorphEditor.prototype.addPoint = function (xA, yA, xB, yB) {
             var point = new MorphPoint_1.default(xA, yA);
-            if (xB !== null && yB !== null) {
+            if (xB !== undefined && yB !== undefined) {
                 point.update(false, xB, yB);
             }
             this.points.push(point);
@@ -1454,7 +1454,7 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var _this = this;
             this.onChange = onChange;
             this.morphSteps = 5;
-            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateDownloadData.bind(this));
+            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateExportData.bind(this));
             secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
             secMorphEditor.addUpload('Import', this.importPoints.bind(this));
             this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
@@ -1472,7 +1472,7 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
         /**
          * Updates the control points export button data.
          */
-        MorphedGenerator.prototype.updateDownloadData = function () {
+        MorphedGenerator.prototype.updateExportData = function () {
             this.btnExport.setData(this.morphEditor.getPointsAsJSON());
         };
         /**

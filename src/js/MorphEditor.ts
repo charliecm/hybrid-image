@@ -103,8 +103,8 @@ export default class MorphEditor {
      * Adds a new control point.
      */
     addPoint(xA:number, yA:number, xB?:number, yB?:number) {
-        let point = new MorphPoint(xA, yA)
-        if (xB !== null && yB !== null) {
+        let point = new MorphPoint(xA, yA);
+        if (xB !== undefined && yB !== undefined) {
             point.update(false, xB, yB);
         }
         this.points.push(point);
@@ -124,7 +124,7 @@ export default class MorphEditor {
         for (let i = 0; i < points.length; i++) {
             points[i].draw(true, cA, scale);
             points[i].draw(false, cB, scale);
-        }
+        } 
         this.onChange();
     }
 

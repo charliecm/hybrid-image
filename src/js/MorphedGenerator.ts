@@ -30,7 +30,7 @@ export default class MorphedGenerator implements Generator {
         let ele = this.ele = document.createElement('div'),
             secMorphEditor:Section = this.secMorphEditor = new Section('Morphed Images Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'),
             secMorph:Section = this.secMorph = new Section('Morphed Images', 'Add control points using the above editor, then press Update.'),
-            morphEditor:MorphEditor = this.morphEditor = new MorphEditor(this.updateDownloadData.bind(this));
+            morphEditor:MorphEditor = this.morphEditor = new MorphEditor(this.updateExportData.bind(this));
         secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
         secMorphEditor.addUpload('Import', this.importPoints.bind(this));
         this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
@@ -49,7 +49,7 @@ export default class MorphedGenerator implements Generator {
     /**
      * Updates the control points export button data.
      */
-    private updateDownloadData() {
+    private updateExportData() {
         this.btnExport.setData(this.morphEditor.getPointsAsJSON());
     }
 
