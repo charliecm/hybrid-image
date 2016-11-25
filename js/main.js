@@ -1120,7 +1120,7 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
             this.canvHighPass = new Canvas_1.default();
             this.lowPassRadius = 6;
             this.highPassRadius = 2;
-            var ele = this.ele = document.createElement('div'), secFrequencies = this.secFrequencies = new Section_1.default('Low/high frequency images');
+            var ele = this.ele = document.createElement('div'), secFrequencies = this.secFrequencies = new Section_1.default('Low/High Frequency Images');
             // Add low-pass radius input
             secFrequencies.addParameter('Low-pass radius', this.lowPassRadius, 0, 30, function (val) {
                 _this.lowPassRadius = val;
@@ -1453,20 +1453,24 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var _this = this;
             this.onChange = onChange;
             this.morphSteps = 5;
-            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morphed Images Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateExportData.bind(this));
+            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morph Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), secFrequencies = this.secFrequencies = new Section_2.default('Frequency Images', 'Click high frequency images to use.'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateExportData.bind(this));
+            // Morph editor section
             secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
             secMorphEditor.addUpload('Import', this.importPoints.bind(this));
             this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
+            // Morphed images section
             secMorph.addParameter('Steps', this.morphSteps, 1, 10, function (val) {
                 _this.morphSteps = val;
                 _this.updateMorph();
                 _this.updateResult();
             });
             secMorph.addButton('Update', this.updateMorph.bind(this));
+            // Frequency images section
             // Insert elements
             secMorphEditor.addItem(morphEditor.element);
             ele.appendChild(secMorphEditor.element);
             ele.appendChild(secMorph.element);
+            ele.appendChild(secFrequencies.element);
         }
         /**
          * Updates the control points export button data.
@@ -1502,11 +1506,11 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                         editor.updateCanvas();
                     }
                     else {
-                        alert('Invalid JSON format.');
+                        alert('File has an invalid JSON format. Please try again.');
                     }
                 }
                 catch (e) {
-                    alert('Please upload a valid JSON.');
+                    alert('Please upload a valid JSON file.');
                 }
                 reader.onload = reader.onerror = null;
             };
@@ -1583,7 +1587,7 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
             this.countTotal = 2;
             this.tabOriginal = 'Original';
             this.tabMorphed = 'Morphed Image';
-            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
+            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input Images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
             // Sections wrap
             ele.className = 'sections';
             // Input section
