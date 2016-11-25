@@ -1,3 +1,7 @@
+/**
+ * https://github.com/ppisljar/image-morph-js
+ */
+
 var ImgWarper = ImgWarper || {};
 
 ImgWarper.Warper = function(

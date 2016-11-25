@@ -25,8 +25,8 @@ export function getImageData(img:HTMLImageElement):ImageData {
  * @param {number} radius Blur radius.
  */
 export function lowPass(img:ImageData, radius:number):ImageData {
-    let monochrome = Filter.apply(img, Filter.grayscale),
-        result = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius);
+    let monochrome:ImageData = Filter.apply(img, Filter.grayscale),
+        result:ImageData = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius);
     return result;
 }
 
@@ -35,7 +35,7 @@ export function lowPass(img:ImageData, radius:number):ImageData {
  * @param {ImageData} img Image buffer.
  * @param {number} radius Blur radius before convolution.
  */
-export function highPass(img:ImageData, radius:number):ImageData {
+export function highPass(img:ImageData, radius?:number):ImageData {
     // Laplacian of guassian (LoG) - http://fourier.eng.hmc.edu/e161/lectures/gradient/node8.html
     let matrix:number[][] = [
             [ 0, 0, 1, 0, 0 ],
@@ -45,8 +45,12 @@ export function highPass(img:ImageData, radius:number):ImageData {
             [ 0, 0, 1, 0, 0 ]
         ],
         monochrome = Filter.apply(img, Filter.grayscale),
-        blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius), 
-        result = Filter.apply(blur, Filter.convolve, matrix, true);
+        blur:ImageData = monochrome, 
+        result:ImageData;
+    if (radius !== undefined) {
+        blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius); 
+    }
+    result = Filter.apply(blur, Filter.convolve, matrix, true)
     return result;
 }
 

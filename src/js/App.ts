@@ -168,20 +168,17 @@ export default class App {
             imgB:HTMLImageElement = this.imgB;
         readerA.onerror = readerB.onerror = () => {
             this.showError('Error reading images. Please try again.');
-            readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
         }
         // Load first image
         readerA.onload = () => {
             imgA.onload = this.checkImages.bind(this);
             imgA.src = readerA.result;
-            readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
         };
         readerA.readAsDataURL(files[0]);
         // Load second image
         readerB.onload = () => {
             imgB.onload = this.checkImages.bind(this);
             imgB.src = readerB.result;
-            readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
         };
         readerB.readAsDataURL(files[1]);
     }

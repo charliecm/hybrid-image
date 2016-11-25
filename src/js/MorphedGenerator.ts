@@ -23,6 +23,7 @@ export default class MorphedGenerator implements Generator {
     private morphEditor:MorphEditor;
     private morpher:ImgWarper.Animator;
     private btnExport:any;
+    private passRadius:number = 3;
 
     /**
      * @param {Function} onChange Event handler for intermediary image changes.
@@ -31,7 +32,7 @@ export default class MorphedGenerator implements Generator {
         let ele = this.ele = document.createElement('div'),
             secMorphEditor:Section = this.secMorphEditor = new Section('Morph Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'),
             secMorph:Section = this.secMorph = new Section('Morphed Images', 'Add control points using the above editor, then press Update.'),
-            secFrequencies = this.secFrequencies = new Section('Frequency Images', 'Click high frequency images to use.'),
+            secFrequencies = this.secFrequencies = new Section('Frequency Images'),
             morphEditor:MorphEditor = this.morphEditor = new MorphEditor(this.updateExportData.bind(this));
         // Morph editor section
         secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
@@ -45,7 +46,10 @@ export default class MorphedGenerator implements Generator {
 		});
         secMorph.addButton('Update', this.updateMorph.bind(this));
         // Frequency images section
-
+        secFrequencies.addParameter('Radius per step', this.passRadius, 0, 30, (val) => {
+            this.passRadius = val;
+            this.updateFrequencyImages();
+		});
         // Insert elements
         secMorphEditor.addItem(morphEditor.element);
         ele.appendChild(secMorphEditor.element);
@@ -74,7 +78,6 @@ export default class MorphedGenerator implements Generator {
             editor:MorphEditor = this.morphEditor;
         reader.onerror = () => {
             alert('Error reading the file. Please try again.');
-            reader.onload = reader.onerror = null;
         }
         reader.onload = () => {
             try {
@@ -93,7 +96,6 @@ export default class MorphedGenerator implements Generator {
             } catch(e) {
                 alert('Please upload a valid JSON file.');
             }
-            reader.onload = reader.onerror = null;
         };
         reader.readAsText(files[0]);
     }
@@ -147,6 +149,45 @@ export default class MorphedGenerator implements Generator {
             secMorph.addItem(canv.element);
             morphs.push(result);
         }
+        this.updateFrequencyImages();
+    }
+
+    /**
+     * Updates the high and low frequency images from morphed images.
+     */
+    updateFrequencyImages() {
+        let morphs:ImageData[] = this.morphs,
+            section:Section = this.secFrequencies,
+            passRadius:number = this.passRadius,
+            canv:Canvas,
+            finalResult:ImageData;
+        for (let i = (morphs.length - 1); i >= 0; i--) {
+            let morph = Filter.apply(morphs[i], Filter.grayscale),
+                result:ImageData;
+            if (i < (morphs.length - 1)) {
+                // Generate high-pass image
+                // result = Operation.highPass(morph, passRadius * (i + 1));
+                let lowPass:ImageData;
+                result = morph;
+                for (let j = 0; j < (i + 1); j++) {
+                    lowPass = Operation.lowPass(morph, passRadius * (j + 1)); 
+                    result = Filter.apply(lowPass, Filter.subtract, morph);
+                    console.log('yo', i, j);
+                    canv = new Canvas(result);
+                    section.addItem(canv.element);
+                }
+                canv = new Canvas(result);
+                section.addItem(canv.element);
+                finalResult = Operation.hybridImage(finalResult, result);
+            } else {
+                // Generate low-pass image for the final image
+                result = Operation.lowPass(morph, passRadius * (i + 1));
+                canv = new Canvas(result);
+                section.addItem(canv.element);
+                finalResult = result;
+            }
+        }
+        this.onChange(finalResult);
     }
     
     /**
