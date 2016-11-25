@@ -13,6 +13,8 @@ Run `npm run watch` to watch files and start a local server at `http://localhost
 
 Run `npm run build` to build the project.
 
+You can import `points.json` for the demo image morph control points.
+
 ## Further Works
 
 Here are some ideas for extending this tool:
