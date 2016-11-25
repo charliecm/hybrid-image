@@ -112,6 +112,7 @@ a {
   height: 1.5rem;
   background-color: #555;
   font-size: 0.75rem;
+  text-decoration: none;
   color: white; }
   .control__input:hover, .control__upload-wrap:hover, .control__button:hover, .control__tab-button:hover {
     background-color: #666; }
@@ -135,11 +136,14 @@ a {
     outline: 0; }
 
 .control__button, .control__tab-button {
+  line-height: 1.5rem;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
   cursor: pointer; }
   .control__button:active, .control__tab-button:active {
     top: 0.0625rem;
     box-shadow: none; }
+  .control__button:hover, .control__tab-button:hover {
+    color: inherit; }
   .control__button:focus, .control__tab-button:focus {
     outline: 0; }
 
