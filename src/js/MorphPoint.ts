@@ -9,7 +9,7 @@ export default class MorphPoint {
     public xB:number;
     public yB:number;
     private isSelected:boolean = false;
-    private readonly radius:number = 5;
+    private readonly radius:number = 3;
     private readonly radiusSelect:number = 10;
 
     /**
@@ -42,20 +42,34 @@ export default class MorphPoint {
      * @param {boolean} isA Draw point A, otherwise point B.
      * @param {CanvasRenderingContext2D} c Canvas rendering context.
      */
-    draw(isA:boolean, c:CanvasRenderingContext2D) {
+    draw(isA:boolean, c:CanvasRenderingContext2D, scale:number = 1) {
         let xx:number = (isA) ? this.xA : this.xB,
             yy:number = (isA) ? this.yA : this.yB,
-            r = this.radius;
+            r = this.radius * scale;
         c.beginPath();
-        if (this.isSelected) {
-            c.fillStyle = 'yellow';
-            c.strokeStyle = 'white';
-        } else {
-            c.fillStyle = 'red';
-            c.strokeStyle = '';
-        }
         c.ellipse(xx, yy, r, r, 0, 0, 2 * Math.PI);
-        c.fill();
+        c.strokeStyle = '';
+        c.lineWidth = 0;
+        if (this.isSelected) {
+            c.strokeStyle = 'black';
+            c.lineWidth = 6 * scale;
+            c.stroke();
+            c.strokeStyle = 'white';
+            c.lineWidth = 3 * scale;
+            c.stroke();
+            c.fillStyle = '#19CD17';
+            c.fill();
+        } else {
+            c.strokeStyle = 'black';
+            c.lineWidth = 3 * scale;
+            c.stroke();
+            c.strokeStyle = 'white';
+            c.lineWidth = 1 * scale;
+            c.stroke();
+            c.fillStyle = 'red';
+            c.fill();
+        }
+        c.closePath();
     }
 
     /**
