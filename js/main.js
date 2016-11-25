@@ -772,7 +772,11 @@ define("Operation", ["require", "exports", "Filter", "StackBlur"], function (req
             [1, 2, -16, 2, 1],
             [0, 1, 2, 1, 0],
             [0, 0, 1, 0, 0]
-        ], monochrome = Filter.apply(img, Filter.grayscale), blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius), result = Filter.apply(blur, Filter.convolve, matrix, true);
+        ], monochrome = Filter.apply(img, Filter.grayscale), blur = monochrome, result;
+        if (radius !== undefined) {
+            blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius);
+        }
+        result = Filter.apply(blur, Filter.convolve, matrix, true);
         return result;
     }
     exports.highPass = highPass;
@@ -1443,7 +1447,7 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
  * MorphedGenerator
  * Displays the morphed image hybrid image generator UI.
  */
-define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEditor", "Section"], function (require, exports, Canvas_2, Filter, MorphEditor_1, Section_2) {
+define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEditor", "Operation", "Section"], function (require, exports, Canvas_2, Filter, MorphEditor_1, Operation, Section_2) {
     "use strict";
     var MorphedGenerator = (function () {
         /**
@@ -1453,7 +1457,8 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var _this = this;
             this.onChange = onChange;
             this.morphSteps = 5;
-            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morph Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), secFrequencies = this.secFrequencies = new Section_2.default('Frequency Images', 'Click high frequency images to use.'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateExportData.bind(this));
+            this.passRadius = 3;
+            var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morph Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), secFrequencies = this.secFrequencies = new Section_2.default('Frequency Images'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateExportData.bind(this));
             // Morph editor section
             secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
             secMorphEditor.addUpload('Import', this.importPoints.bind(this));
@@ -1466,6 +1471,10 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             });
             secMorph.addButton('Update', this.updateMorph.bind(this));
             // Frequency images section
+            secFrequencies.addParameter('Radius per step', this.passRadius, 0, 30, function (val) {
+                _this.passRadius = val;
+                _this.updateFrequencyImages();
+            });
             // Insert elements
             secMorphEditor.addItem(morphEditor.element);
             ele.appendChild(secMorphEditor.element);
@@ -1491,7 +1500,6 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var reader = new FileReader(), editor = this.morphEditor;
             reader.onerror = function () {
                 alert('Error reading the file. Please try again.');
-                reader.onload = reader.onerror = null;
             };
             reader.onload = function () {
                 try {
@@ -1512,7 +1520,6 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                 catch (e) {
                     alert('Please upload a valid JSON file.');
                 }
-                reader.onload = reader.onerror = null;
             };
             reader.readAsText(files[0]);
         };
@@ -1555,6 +1562,40 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                 secMorph.addItem(canv.element);
                 morphs.push(result);
             }
+            this.updateFrequencyImages();
+        };
+        /**
+         * Updates the high and low frequency images from morphed images.
+         */
+        MorphedGenerator.prototype.updateFrequencyImages = function () {
+            var morphs = this.morphs, section = this.secFrequencies, passRadius = this.passRadius, canv, finalResult;
+            for (var i = (morphs.length - 1); i >= 0; i--) {
+                var morph = Filter.apply(morphs[i], Filter.grayscale), result = void 0;
+                if (i < (morphs.length - 1)) {
+                    // Generate high-pass image
+                    // result = Operation.highPass(morph, passRadius * (i + 1));
+                    var lowPass = void 0;
+                    result = morph;
+                    for (var j = 0; j < (i + 1); j++) {
+                        lowPass = Operation.lowPass(morph, passRadius * (j + 1));
+                        result = Filter.apply(lowPass, Filter.subtract, morph);
+                        console.log('yo', i, j);
+                        canv = new Canvas_2.default(result);
+                        section.addItem(canv.element);
+                    }
+                    canv = new Canvas_2.default(result);
+                    section.addItem(canv.element);
+                    finalResult = Operation.hybridImage(finalResult, result);
+                }
+                else {
+                    // Generate low-pass image for the final image
+                    result = Operation.lowPass(morph, passRadius * (i + 1));
+                    canv = new Canvas_2.default(result);
+                    section.addItem(canv.element);
+                    finalResult = result;
+                }
+            }
+            this.onChange(finalResult);
         };
         /**
          * Propogates result image to parent.
@@ -1701,20 +1742,17 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
             var secInput = this.secInputs, readerA = new FileReader(), readerB = new FileReader(), imgA = this.imgA, imgB = this.imgB;
             readerA.onerror = readerB.onerror = function () {
                 _this.showError('Error reading images. Please try again.');
-                readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
             };
             // Load first image
             readerA.onload = function () {
                 imgA.onload = _this.checkImages.bind(_this);
                 imgA.src = readerA.result;
-                readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
             };
             readerA.readAsDataURL(files[0]);
             // Load second image
             readerB.onload = function () {
                 imgB.onload = _this.checkImages.bind(_this);
                 imgB.src = readerB.result;
-                readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
             };
             readerB.readAsDataURL(files[1]);
         };
