@@ -124,7 +124,7 @@ export default class MorphEditor {
         for (let i = 0; i < points.length; i++) {
             points[i].draw(true, cA, scale);
             points[i].draw(false, cB, scale);
-        } 
+        }
         this.onChange();
     }
 
@@ -138,8 +138,7 @@ export default class MorphEditor {
         this.imgB = imgB;
         this.canvA.width = this.canvB.width = imgA.width;
         this.canvA.height = this.canvB.height = imgA.height;
-        this.contextA.putImageData(imgA, 0, 0);
-        this.contextB.putImageData(imgB, 0, 0);
+        this.updateCanvas();
     }
 
     /**

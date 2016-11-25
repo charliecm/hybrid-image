@@ -3,7 +3,7 @@
  */
 
 interface Generator {
-    update(imgA:ImageData, imgB:ImageData):void;
+    update(imgA:ImageData, imgB:ImageData);
     element;
 }
 
