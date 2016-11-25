@@ -26,7 +26,7 @@ export default class HybridGenerator implements Generator {
      */
 	constructor(private onChange:Function) {
         let ele = this.ele = document.createElement('div'),
-            secFrequencies:Section = this.secFrequencies = new Section('Low/high frequency images');
+            secFrequencies:Section = this.secFrequencies = new Section('Low/High Frequency Images');
         // Add low-pass radius input
 		secFrequencies.addParameter('Low-pass radius', this.lowPassRadius, 0, 30, (val) => {
             this.lowPassRadius = val;

@@ -19,6 +19,7 @@ export default class MorphedGenerator implements Generator {
     private morphSteps:number = 5;
     private secMorph:Section;
     private secMorphEditor:Section;
+    private secFrequencies:Section;
     private morphEditor:MorphEditor;
     private morpher:ImgWarper.Animator;
     private btnExport:any;
@@ -28,22 +29,28 @@ export default class MorphedGenerator implements Generator {
      */
 	constructor(private onChange:Function) {
         let ele = this.ele = document.createElement('div'),
-            secMorphEditor:Section = this.secMorphEditor = new Section('Morphed Images Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'),
+            secMorphEditor:Section = this.secMorphEditor = new Section('Morph Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'),
             secMorph:Section = this.secMorph = new Section('Morphed Images', 'Add control points using the above editor, then press Update.'),
+            secFrequencies = this.secFrequencies = new Section('Frequency Images', 'Click high frequency images to use.'),
             morphEditor:MorphEditor = this.morphEditor = new MorphEditor(this.updateExportData.bind(this));
+        // Morph editor section
         secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
         secMorphEditor.addUpload('Import', this.importPoints.bind(this));
         this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
+        // Morphed images section
 		secMorph.addParameter('Steps', this.morphSteps, 1, 10, (val) => {
             this.morphSteps = val;
             this.updateMorph();
             this.updateResult();
 		});
         secMorph.addButton('Update', this.updateMorph.bind(this));
+        // Frequency images section
+
         // Insert elements
         secMorphEditor.addItem(morphEditor.element);
         ele.appendChild(secMorphEditor.element);
         ele.appendChild(secMorph.element);
+        ele.appendChild(secFrequencies.element);
 	}
 
     /**
@@ -81,10 +88,10 @@ export default class MorphedGenerator implements Generator {
                     }
                     editor.updateCanvas();
                 } else {
-                    alert('Invalid JSON format.');
+                    alert('File has an invalid JSON format. Please try again.');
                 }
             } catch(e) {
-                alert('Please upload a valid JSON.');
+                alert('Please upload a valid JSON file.');
             }
             reader.onload = reader.onerror = null;
         };

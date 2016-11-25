@@ -40,7 +40,7 @@ export default class App {
             imgB = this.imgB = document.createElement('img'),
             canvResult = this.canvResult = new Canvas(),
             canvResultSmall = this.canvResultSmall = new Canvas(null, true),
-            secInput:Section = this.secInputs = new Section('Input images', 'Please select two images with the same width and height.'),
+            secInput:Section = this.secInputs = new Section('Input Images', 'Please select two images with the same width and height.'),
             secMethod:Section = this.secMethod = new Section('Method', 'Choose which method to generate a hybrid image with.', false),
 			secResult:Section = this.secResult = new Section('Result'),
             genHybrid = this.genHybrid = new HybridGenerator(this.updateResult.bind(this)),
