@@ -7,10 +7,23 @@ An [hybrid image](https://en.wikipedia.org/wiki/Hybrid_image) creation tool crea
 - [Hybrid Images](http://cvcl.mit.edu/hybrid/OlivaTorralb_Hybrid_Siggraph06.pdf)
 - [Hybrid image using image morphing](http://dl.acm.org/citation.cfm?id=2811547)
 
-This is a __work in progress__.
-
 ## Development
 
 Run `npm run watch` to watch files and start a local server at `http://localhost:8080`.
 
 Run `npm run build` to build the project.
+
+## Further Works
+
+Here are some ideas for extending this tool:
+
+- Include a crop tool when uploading input images
+- Use async approach to update images
+- Use proxy images for previewing intermediary images
+- Add ability to adjust preview image sizes
+- Address any other edge-cases with custom input images
+- [Implement feature-based morphing](https://www.cs.princeton.edu/courses/archive/fall00/cs426/papers/beier92.pdf)
+
+## Thanks
+
+This project uses [StackBlur](https://github.com/flozz/StackBlur) by [flozz](https://github.com/flozz), and [image-morph-js](https://github.com/ppisljar/image-morph-js) by [ppisljar](https://github.com/ppisljar).
