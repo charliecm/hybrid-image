@@ -300,7 +300,7 @@ export default class Section {
 	 * @param {string} label Label for the input.
 	 * @param {Function} onUpload Event handler for file upload.
 	 */
-	addUpload(label:string, onUpload:Function) {
+	addUpload(label:string, onUpload:Function, isMultiple:boolean = false) {
 		let ele:HTMLElement = document.createElement('div'),
 			eleWrap:HTMLElement = document.createElement('div'),
 			eleLabel:HTMLSpanElement = document.createElement('span'),
@@ -324,7 +324,7 @@ export default class Section {
 		// Input
 		eleInput.className = 'control__upload';
 		eleInput.type = 'file';
-		eleInput.multiple = true;
+		eleInput.multiple = isMultiple;
 		eleInput.addEventListener('change', onChange);
 		// Wrap
 		eleWrap.className = 'control__upload-wrap';

@@ -18,13 +18,13 @@ export default class App {
     private eleMorphedTab:HTMLElement;
 	private imgA:HTMLImageElement;
 	private imgB:HTMLImageElement;
-    private imgDataURL:string;
     private canvResult:Canvas;
     private canvResultSmall:Canvas;
 	private secInputs:Section;
     private secMethod:Section;
 	private secResult:Section;
     private tabsMethod:any;
+    private btnSaveImage:any;
     private genHybrid:HybridGenerator;
     private genMorphed:MorphedGenerator;
     private activeGenerator:Generator;
@@ -50,7 +50,7 @@ export default class App {
         // Sections wrap
         ele.className = 'sections';
         // Input section
-        secInput.addUpload('Upload', this.handleUpload.bind(this));
+        secInput.addUpload('Upload', this.handleUpload.bind(this), true);
 		secInput.addButton('Swap Images', this.swap.bind(this));
         secInput.addButton('Reset to Demo', this.showDemo.bind(this));
         imgA.className = imgB.className = 'canvas';
@@ -61,10 +61,7 @@ export default class App {
         // Result section
         secResult.addItem(canvResult.element);
         secResult.addItem(canvResultSmall.element);
-        secResult.addButton('Save Image', () => {
-            let url = this.imgDataURL;
-            window.location.href = url;
-        });
+        this.btnSaveImage = secResult.addDownload('Save Image', '', 'result.png');
         // Add elements
         eleHybridTab.className = eleMorphedTab.className = 'tab-section';
         eleBody.appendChild(eleHybridTab);
@@ -111,7 +108,7 @@ export default class App {
         let canvResult:Canvas = this.canvResult;
         canvResult.drawImage(result);
         this.canvResultSmall.drawImage(result);
-        this.imgDataURL = canvResult.element.toDataURL('image/png').replace('image/png', 'image/octet-stream');
+        this.btnSaveImage.setData(canvResult.element.toDataURL('image/png').replace('image/png', 'image/octet-stream'));
     }
 
     /**
@@ -170,18 +167,21 @@ export default class App {
             imgA:HTMLImageElement = this.imgA,
             imgB:HTMLImageElement = this.imgB;
         readerA.onerror = readerB.onerror = () => {
-            this.showError('Error reading images. Please try again.')
+            this.showError('Error reading images. Please try again.');
+            readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
         }
         // Load first image
         readerA.onload = () => {
             imgA.onload = this.checkImages.bind(this);
             imgA.src = readerA.result;
+            readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
         };
         readerA.readAsDataURL(files[0]);
         // Load second image
         readerB.onload = () => {
             imgB.onload = this.checkImages.bind(this);
             imgB.src = readerB.result;
+            readerA.onload = readerB.onload = readerA.onerror = readerB.onerror = null;
         };
         readerB.readAsDataURL(files[1]);
     }
