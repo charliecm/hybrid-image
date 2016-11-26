@@ -33,6 +33,86 @@ export function apply(src:ImageData, operation:Function, ...params):ImageData {
 }
 
 /**
+ * Applies a filter to a source image.
+ * https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
+ * @param {ImageData} src Source image buffer.
+ * @param {Function} operation Filter operation to perform.
+ * @param {arguments} params Parameters to pass into operation function.
+ */
+export function applyConvolve(src:ImageData, matrix:number[][]):ImageData {
+    let width:number = src.width,
+        height:number = src.height,
+        marginX:number = (matrix.length - 1) / 2,
+        marginY:number = (matrix[0].length - 1) / 2,
+        marginWidth:number = width + marginX * 2,
+        marginHeight:number = height + marginY * 2,
+        result:ImageData = new ImageData(width, height),
+        resultBuf:ArrayBuffer = new ArrayBuffer(width * height * 4),
+        resultBuf8:Uint8ClampedArray = new Uint8ClampedArray(resultBuf),
+        resultBuf32:Uint32Array = new Uint32Array(resultBuf),
+        margin:ImageData = new ImageData(marginWidth, marginHeight),
+        marginBuf:ArrayBuffer = new ArrayBuffer(marginWidth * marginHeight * 4),
+        marginBuf8:Uint8ClampedArray = new Uint8ClampedArray(marginBuf),
+        marginBuf32:Uint32Array = new Uint32Array(marginBuf),
+        setMarginRGB = (srcX:number, srcY:number, destX:number, destY:number) => {
+            let {r, g, b} = this.getRGB(src, srcX, srcY);
+            marginBuf32[destX + destY * marginWidth] = (255 << 24) | (b << 16) | (g << 8) | r;
+        };
+    // Fill corners
+    for (let x:number = 0; x < marginX; x++) {
+        for (let y:number = 0; y < marginY; y++) {
+            setMarginRGB(marginY - y, marginX - x, x, y);
+            setMarginRGB(width - marginY + y, x, x + marginWidth - marginX, y);
+            setMarginRGB(width - 1 - y, height - 1 - x, x + marginWidth - marginX, y + marginHeight - marginY);
+            setMarginRGB(y, height - 1 - marginY + x, x, y + marginHeight - marginY);
+        }
+    }
+    // Fill horizontal margins
+    for (let x:number = marginX; x < (marginWidth - marginX); x++) {
+        for (let y:number = 0; y < marginY; y++) {
+            setMarginRGB(x - marginX, marginY - y, x, y);
+            setMarginRGB(x - marginX, height - 1 - y, x, y + marginHeight - marginY);
+        }
+    }
+    // Fill vertical margins
+    for (let x:number = 0; x < marginX; x++) {
+        for (let y:number = marginY; y < (marginHeight - marginY); y++) {
+            setMarginRGB(marginX - x, y - marginY, x, y);
+            setMarginRGB(width - 1 - x, y - marginY, x + marginWidth - marginX, y);
+        }
+    }
+    margin.data.set(marginBuf8);
+    for (let x:number = 0; x < width; x++) {
+        for (let y:number = 0; y < height; y++) {
+            let r:number = 0,
+                g:number = 0,
+                b:number = 0;
+            for (let relX:number = -marginX; relX <= marginX; relX++) {
+                for (let relY:number = -marginY; relY <= marginY; relY++) {
+                    let xx = x + relX,
+                        yy = y + relY,
+                        isOutside = (xx < 0 || xx >= width || yy < 0 || yy >= height),
+                        {r:relR, g:relG, b:relB} = (isOutside) ? this.getRGB(margin, xx + marginX, yy + marginY) : this.getRGB(src, xx, yy),
+                        multiplier = matrix[relX + marginX][relY + marginY];
+                    relR *= multiplier;
+                    relG *= multiplier;
+                    relB *= multiplier;
+                    r += relR;
+                    g += relG;
+                    b += relB;
+                }
+            }
+            r = Helper.clip(r);
+            g = Helper.clip(g);
+            b = Helper.clip(b);
+            resultBuf32[x + y * width] = (255 << 24) | (b << 16) | (g << 8) | r;
+        }
+    }
+    result.data.set(resultBuf8);
+    return result;
+}
+
+/**
  * Returns the RGBA data of a pixel.
  * @param {ImageData} src Source image.
  * @param {number} x Horizontal position in image.
@@ -130,14 +210,29 @@ export function convolve(x:number, y:number, src:ImageData, matrix:number[][], s
 }
 
 /**
- * Subtracts a pixel value symmetrically from two sources.
+ * Adds a pixel value from two sources.
+ * @param {boolean} shiftValue Shifts value by subtracting 0.5.
  */
-export function subtract(x:number, y:number, srcA:ImageData, srcB:ImageData) {
+export function add(x:number, y:number, srcA:ImageData, srcB:ImageData, shiftValue:boolean = false) {
     let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
         {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
-        r:number = Math.abs(rA - rB),
-        g:number = Math.abs(gA - gB),
-        b:number = Math.abs(bA - bB);
+        r:number = rA + rB - ((shiftValue) ? 128 : 0),
+        g:number = gA + gB - ((shiftValue) ? 128 : 0),
+        b:number = bA + bB - ((shiftValue) ? 128 : 0);
+    return {r, g, b};
+}
+
+/**
+ * Subtracts a pixel value symmetrically from two sources.
+ * @param {boolean} isSymmetrical Perform symmetrical subtraction (absolute value).
+ * @param {boolean} shiftValue Shifts value by adding 0.5.
+ */
+export function subtract(x:number, y:number, srcA:ImageData, srcB:ImageData, isSymmetrical:boolean = true, shiftValue:boolean = false) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
+        {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
+        r:number = ((isSymmetrical) ? Math.abs(rA - rB) : rA - rB) + ((shiftValue) ? 128 : 0),
+        g:number = ((isSymmetrical) ? Math.abs(gA - gB) : gA - gB) + ((shiftValue) ? 128 : 0),
+        b:number = ((isSymmetrical) ? Math.abs(bA - bB) : bA - bB) + ((shiftValue) ? 128 : 0);
     return {r, g, b};
 }
 
@@ -190,4 +285,29 @@ export function dissolve(x:number, y:number, srcA:ImageData, srcB:ImageData, int
         g:number = (gA * intensity) + ((1 - intensity) * gB),
         b:number = (bA * intensity) + ((1 - intensity) * bB);
     return {r, g, b};
+}
+
+/**
+ * Returns a custom gaussian convoultion matrix.
+ * From http://stackoverflow.com/questions/8204645/implementing-gaussian-blur-how-to-calculate-convolution-matrix-kernel.
+ */
+export function getGaussianMatrix(hsize:number = 3, sigma:number = 1):number[][] {
+    let kernel:number[][] = [],
+        mean:number = hsize / 2,
+        sum:number = 0,
+        x:number, y:number;
+    for (x = 0; x < hsize; x++) {
+        kernel[x] = [];
+        for (y = 0; y < hsize; y++) {
+            kernel[x][y] = Math.exp(-0.5 * (Math.pow((x - mean) / sigma, 2.0) + Math.pow((y - mean) / sigma, 2.0)) / (2 * Math.PI * sigma * sigma));
+            sum += kernel[x][y];
+        }
+    }
+    // Normalize the kernel
+    for (x = 0; x < hsize; ++x) {
+        for (y = 0; y < hsize; ++y) {
+            kernel[x][y] /= sum;
+        }
+    }
+    return kernel;
 }

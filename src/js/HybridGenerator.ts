@@ -4,6 +4,7 @@
  */
 
 import Canvas from './Canvas';
+import * as Filter from './Filter';
 import Generator from './Generator';
 import * as Operation from './Operation';
 import Section from './Section';
@@ -18,8 +19,8 @@ export default class HybridGenerator implements Generator {
 	private secFrequencies:Section;
     private canvLowPass:Canvas = new Canvas();
     private canvHighPass:Canvas = new Canvas();
-    private lowPassRadius:number = 6;
-    private highPassRadius:number = 2;
+    private lowPassFrequency:number = 4;
+    private highPassFrequency:number = 2;
 
     /**
      * @param {Function} onChange Event handler for intermediary image changes.
@@ -27,15 +28,15 @@ export default class HybridGenerator implements Generator {
 	constructor(private onChange:Function) {
         let ele = this.ele = document.createElement('div'),
             secFrequencies:Section = this.secFrequencies = new Section('Low/High Frequency Images');
-        // Add low-pass radius input
-		secFrequencies.addParameter('Low-pass radius', this.lowPassRadius, 0, 30, (val) => {
-            this.lowPassRadius = val;
+        // Add low-pass frequency input
+		secFrequencies.addParameter('Low-pass frequency', this.lowPassFrequency, 0, 30, (val) => {
+            this.lowPassFrequency = val;
             this.updateLowPass();
             this.updateResult();
 		});
-        // Add high-pass radius input
-		secFrequencies.addParameter('High-pass radius', this.highPassRadius, 0, 30, (val) => {
-            this.highPassRadius = val;
+        // Add high-pass frequency input
+		secFrequencies.addParameter('High-pass frequency', this.highPassFrequency, 0, 30, (val) => {
+            this.highPassFrequency = val;
 			this.updateHighPass();
             this.updateResult();
 		});
@@ -50,8 +51,8 @@ export default class HybridGenerator implements Generator {
      * @param {ImageData} imgB Second input image.
      */
     update(imgA:ImageData, imgB:ImageData) {
-        this.imgA = imgA,
-        this.imgB = imgB;
+        this.imgA = Filter.apply(imgA, Filter.grayscale),
+        this.imgB = Filter.apply(imgB, Filter.grayscale);
         this.updateLowPass();
         this.updateHighPass();
         this.updateResult();
@@ -61,7 +62,7 @@ export default class HybridGenerator implements Generator {
      * Updates low pass image.
      */
     private updateLowPass() {
-        let lowPass = this.lowPass = Operation.lowPass(this.imgA, this.lowPassRadius);
+        let lowPass = this.lowPass = Operation.lowPass(this.imgA, this.lowPassFrequency);
         this.canvLowPass.drawImage(lowPass);
     }
 
@@ -69,7 +70,7 @@ export default class HybridGenerator implements Generator {
      * Updates high pass image.
      */
     private updateHighPass() {
-        let highPass:ImageData = this.highPass = Operation.highPass(this.imgB, this.highPassRadius);
+        let highPass = this.highPass = Operation.highPass(this.imgB, this.highPassFrequency);
         this.canvHighPass.drawImage(highPass);
     }
 

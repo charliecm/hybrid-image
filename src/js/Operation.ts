@@ -22,36 +22,20 @@ export function getImageData(img:HTMLImageElement):ImageData {
 /**
  * Returns an image buffer under a low-pass (blur) filter.
  * @param {ImageData} img Image buffer.
- * @param {number} radius Blur radius.
+ * @param {number} cutoff Cut-off frequency.
  */
-export function lowPass(img:ImageData, radius:number):ImageData {
-    let monochrome:ImageData = Filter.apply(img, Filter.grayscale),
-        result:ImageData = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius);
-    return result;
+export function lowPass(img:ImageData, cutoff:number):ImageData {
+    return Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
 }
 
 /**
  * Returns an image buffer under a high-pass (sharpen) filter.
  * @param {ImageData} img Image buffer.
- * @param {number} radius Blur radius before convolution.
+ * @param {number} cutoff Cut-off frequency.
  */
-export function highPass(img:ImageData, radius?:number):ImageData {
-    // Laplacian of guassian (LoG) - http://fourier.eng.hmc.edu/e161/lectures/gradient/node8.html
-    let matrix:number[][] = [
-            [ 0, 0, 1, 0, 0 ],
-            [ 0, 1, 2, 1, 0 ],
-            [ 1, 2, -16, 2, 1 ],
-            [ 0, 1, 2, 1, 0 ],
-            [ 0, 0, 1, 0, 0 ]
-        ],
-        monochrome = Filter.apply(img, Filter.grayscale),
-        blur:ImageData = monochrome, 
-        result:ImageData;
-    if (radius !== undefined) {
-        blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius); 
-    }
-    result = Filter.apply(blur, Filter.convolve, matrix, true)
-    return result;
+export function highPass(img:ImageData, cutoff?:number):ImageData {
+    let lowPass = Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
+    return Filter.apply(img, Filter.subtract, lowPass, false, true);
 }
 
 /**
@@ -60,5 +44,5 @@ export function highPass(img:ImageData, radius?:number):ImageData {
  * @param {ImageData} highPass High-pass image.
  */
 export function hybridImage(lowPass:ImageData, highPass:ImageData):ImageData {
-    return Filter.apply(lowPass, Filter.overlay, highPass);
+    return Filter.apply(lowPass, Filter.add, highPass, true);
 }

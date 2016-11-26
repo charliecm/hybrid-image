@@ -113,8 +113,8 @@ export default class MorphedGenerator implements Generator {
      * @param {ImageData} imgB Second input image.
      */
     update(imgA:ImageData, imgB:ImageData) {
-        this.imgA = imgA,
-        this.imgB = imgB;
+        this.imgA = Filter.apply(imgA, Filter.grayscale),
+        this.imgB = Filter.apply(imgB, Filter.grayscale);
         this.morphEditor.updateSources(imgA, imgB);
         this.updateMorph();
         this.updateResult();
@@ -166,13 +166,11 @@ export default class MorphedGenerator implements Generator {
                 result:ImageData;
             if (i < (morphs.length - 1)) {
                 // Generate high-pass image
-                // result = Operation.highPass(morph, passRadius * (i + 1));
                 let lowPass:ImageData;
                 result = morph;
                 for (let j = 0; j < (i + 1); j++) {
                     lowPass = Operation.lowPass(morph, passRadius * (j + 1)); 
-                    result = Filter.apply(lowPass, Filter.subtract, morph);
-                    console.log('yo', i, j);
+                    result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
                     canv = new Canvas(result);
                     section.addItem(canv.element);
                 }
@@ -194,8 +192,8 @@ export default class MorphedGenerator implements Generator {
      * Propogates result image to parent.
      */
     private updateResult() {
-        let result:ImageData = Filter.apply(this.imgA, Filter.overlay, this.imgB);
-        this.onChange(result);
+        // let result:ImageData = Operation.hybridImage(this.imgA, this.imgB);
+        // this.onChange(result);
     }
 
     get element() {

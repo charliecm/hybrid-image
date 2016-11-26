@@ -137,7 +137,7 @@ export default class App {
         if (this.activeGenerator) {
             this.update();
         } else {
-            this.showTab(this.tabMorphed);
+            this.showTab(this.tabOriginal);
         }
     }
 

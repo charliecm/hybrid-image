@@ -129,6 +129,67 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
     }
     exports.apply = apply;
     /**
+     * Applies a filter to a source image.
+     * https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
+     * @param {ImageData} src Source image buffer.
+     * @param {Function} operation Filter operation to perform.
+     * @param {arguments} params Parameters to pass into operation function.
+     */
+    function applyConvolve(src, matrix) {
+        var _this = this;
+        var width = src.width, height = src.height, marginX = (matrix.length - 1) / 2, marginY = (matrix[0].length - 1) / 2, marginWidth = width + marginX * 2, marginHeight = height + marginY * 2, result = new ImageData(width, height), resultBuf = new ArrayBuffer(width * height * 4), resultBuf8 = new Uint8ClampedArray(resultBuf), resultBuf32 = new Uint32Array(resultBuf), margin = new ImageData(marginWidth, marginHeight), marginBuf = new ArrayBuffer(marginWidth * marginHeight * 4), marginBuf8 = new Uint8ClampedArray(marginBuf), marginBuf32 = new Uint32Array(marginBuf), setMarginRGB = function (srcX, srcY, destX, destY) {
+            var _a = _this.getRGB(src, srcX, srcY), r = _a.r, g = _a.g, b = _a.b;
+            marginBuf32[destX + destY * marginWidth] = (255 << 24) | (b << 16) | (g << 8) | r;
+        };
+        // Fill corners
+        for (var x = 0; x < marginX; x++) {
+            for (var y = 0; y < marginY; y++) {
+                setMarginRGB(marginY - y, marginX - x, x, y);
+                setMarginRGB(width - marginY + y, x, x + marginWidth - marginX, y);
+                setMarginRGB(width - 1 - y, height - 1 - x, x + marginWidth - marginX, y + marginHeight - marginY);
+                setMarginRGB(y, height - 1 - marginY + x, x, y + marginHeight - marginY);
+            }
+        }
+        // Fill horizontal margins
+        for (var x = marginX; x < (marginWidth - marginX); x++) {
+            for (var y = 0; y < marginY; y++) {
+                setMarginRGB(x - marginX, marginY - y, x, y);
+                setMarginRGB(x - marginX, height - 1 - y, x, y + marginHeight - marginY);
+            }
+        }
+        // Fill vertical margins
+        for (var x = 0; x < marginX; x++) {
+            for (var y = marginY; y < (marginHeight - marginY); y++) {
+                setMarginRGB(marginX - x, y - marginY, x, y);
+                setMarginRGB(width - 1 - x, y - marginY, x + marginWidth - marginX, y);
+            }
+        }
+        margin.data.set(marginBuf8);
+        for (var x = 0; x < width; x++) {
+            for (var y = 0; y < height; y++) {
+                var r = 0, g = 0, b = 0;
+                for (var relX = -marginX; relX <= marginX; relX++) {
+                    for (var relY = -marginY; relY <= marginY; relY++) {
+                        var xx = x + relX, yy = y + relY, isOutside = (xx < 0 || xx >= width || yy < 0 || yy >= height), _a = (isOutside) ? this.getRGB(margin, xx + marginX, yy + marginY) : this.getRGB(src, xx, yy), relR = _a.r, relG = _a.g, relB = _a.b, multiplier = matrix[relX + marginX][relY + marginY];
+                        relR *= multiplier;
+                        relG *= multiplier;
+                        relB *= multiplier;
+                        r += relR;
+                        g += relG;
+                        b += relB;
+                    }
+                }
+                r = Helper.clip(r);
+                g = Helper.clip(g);
+                b = Helper.clip(b);
+                resultBuf32[x + y * width] = (255 << 24) | (b << 16) | (g << 8) | r;
+            }
+        }
+        result.data.set(resultBuf8);
+        return result;
+    }
+    exports.applyConvolve = applyConvolve;
+    /**
      * Returns the RGBA data of a pixel.
      * @param {ImageData} src Source image.
      * @param {number} x Horizontal position in image.
@@ -220,10 +281,24 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
     }
     exports.convolve = convolve;
     /**
-     * Subtracts a pixel value symmetrically from two sources.
+     * Adds a pixel value from two sources.
+     * @param {boolean} shiftValue Shifts value by subtracting 0.5.
      */
-    function subtract(x, y, srcA, srcB) {
-        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = Math.abs(rA - rB), g = Math.abs(gA - gB), b = Math.abs(bA - bB);
+    function add(x, y, srcA, srcB, shiftValue) {
+        if (shiftValue === void 0) { shiftValue = false; }
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = rA + rB - ((shiftValue) ? 128 : 0), g = gA + gB - ((shiftValue) ? 128 : 0), b = bA + bB - ((shiftValue) ? 128 : 0);
+        return { r: r, g: g, b: b };
+    }
+    exports.add = add;
+    /**
+     * Subtracts a pixel value symmetrically from two sources.
+     * @param {boolean} isSymmetrical Perform symmetrical subtraction (absolute value).
+     * @param {boolean} shiftValue Shifts value by adding 0.5.
+     */
+    function subtract(x, y, srcA, srcB, isSymmetrical, shiftValue) {
+        if (isSymmetrical === void 0) { isSymmetrical = true; }
+        if (shiftValue === void 0) { shiftValue = false; }
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = ((isSymmetrical) ? Math.abs(rA - rB) : rA - rB) + ((shiftValue) ? 128 : 0), g = ((isSymmetrical) ? Math.abs(gA - gB) : gA - gB) + ((shiftValue) ? 128 : 0), b = ((isSymmetrical) ? Math.abs(bA - bB) : bA - bB) + ((shiftValue) ? 128 : 0);
         return { r: r, g: g, b: b };
     }
     exports.subtract = subtract;
@@ -259,6 +334,30 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
         return { r: r, g: g, b: b };
     }
     exports.dissolve = dissolve;
+    /**
+     * Returns a custom gaussian convoultion matrix.
+     * From http://stackoverflow.com/questions/8204645/implementing-gaussian-blur-how-to-calculate-convolution-matrix-kernel.
+     */
+    function getGaussianMatrix(hsize, sigma) {
+        if (hsize === void 0) { hsize = 3; }
+        if (sigma === void 0) { sigma = 1; }
+        var kernel = [], mean = hsize / 2, sum = 0, x, y;
+        for (x = 0; x < hsize; x++) {
+            kernel[x] = [];
+            for (y = 0; y < hsize; y++) {
+                kernel[x][y] = Math.exp(-0.5 * (Math.pow((x - mean) / sigma, 2.0) + Math.pow((y - mean) / sigma, 2.0)) / (2 * Math.PI * sigma * sigma));
+                sum += kernel[x][y];
+            }
+        }
+        // Normalize the kernel
+        for (x = 0; x < hsize; ++x) {
+            for (y = 0; y < hsize; ++y) {
+                kernel[x][y] /= sum;
+            }
+        }
+        return kernel;
+    }
+    exports.getGaussianMatrix = getGaussianMatrix;
 });
 /*
     StackBlur - a fast almost Gaussian Blur For Canvas
@@ -737,7 +836,7 @@ define("StackBlur", ["require", "exports"], function (require, exports) {
  * Operation
  * Image manipulation operations.
  */
-define("Operation", ["require", "exports", "Filter", "StackBlur"], function (require, exports, Filter, StackBlur) {
+define("Operation", ["require", "exports", "Filter"], function (require, exports, Filter) {
     "use strict";
     /**
      * Returns the image buffer from an image element.
@@ -752,32 +851,20 @@ define("Operation", ["require", "exports", "Filter", "StackBlur"], function (req
     /**
      * Returns an image buffer under a low-pass (blur) filter.
      * @param {ImageData} img Image buffer.
-     * @param {number} radius Blur radius.
+     * @param {number} cutoff Cut-off frequency.
      */
-    function lowPass(img, radius) {
-        var monochrome = Filter.apply(img, Filter.grayscale), result = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius);
-        return result;
+    function lowPass(img, cutoff) {
+        return Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
     }
     exports.lowPass = lowPass;
     /**
      * Returns an image buffer under a high-pass (sharpen) filter.
      * @param {ImageData} img Image buffer.
-     * @param {number} radius Blur radius before convolution.
+     * @param {number} cutoff Cut-off frequency.
      */
-    function highPass(img, radius) {
-        // Laplacian of guassian (LoG) - http://fourier.eng.hmc.edu/e161/lectures/gradient/node8.html
-        var matrix = [
-            [0, 0, 1, 0, 0],
-            [0, 1, 2, 1, 0],
-            [1, 2, -16, 2, 1],
-            [0, 1, 2, 1, 0],
-            [0, 0, 1, 0, 0]
-        ], monochrome = Filter.apply(img, Filter.grayscale), blur = monochrome, result;
-        if (radius !== undefined) {
-            blur = StackBlur.imageDataRGB(monochrome, 0, 0, img.width, img.height, radius);
-        }
-        result = Filter.apply(blur, Filter.convolve, matrix, true);
-        return result;
+    function highPass(img, cutoff) {
+        var lowPass = Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
+        return Filter.apply(img, Filter.subtract, lowPass, false, true);
     }
     exports.highPass = highPass;
     /**
@@ -786,7 +873,7 @@ define("Operation", ["require", "exports", "Filter", "StackBlur"], function (req
      * @param {ImageData} highPass High-pass image.
      */
     function hybridImage(lowPass, highPass) {
-        return Filter.apply(lowPass, Filter.overlay, highPass);
+        return Filter.apply(lowPass, Filter.add, highPass, true);
     }
     exports.hybridImage = hybridImage;
 });
@@ -1111,7 +1198,7 @@ define("Section", ["require", "exports", "Helper"], function (require, exports, 
  * HybridGenerator
  * Displays the hybrid image generator UI.
  */
-define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section"], function (require, exports, Canvas_1, Operation, Section_1) {
+define("HybridGenerator", ["require", "exports", "Canvas", "Filter", "Operation", "Section"], function (require, exports, Canvas_1, Filter, Operation, Section_1) {
     "use strict";
     var HybridGenerator = (function () {
         /**
@@ -1122,18 +1209,18 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
             this.onChange = onChange;
             this.canvLowPass = new Canvas_1.default();
             this.canvHighPass = new Canvas_1.default();
-            this.lowPassRadius = 6;
-            this.highPassRadius = 2;
+            this.lowPassFrequency = 4;
+            this.highPassFrequency = 2;
             var ele = this.ele = document.createElement('div'), secFrequencies = this.secFrequencies = new Section_1.default('Low/High Frequency Images');
-            // Add low-pass radius input
-            secFrequencies.addParameter('Low-pass radius', this.lowPassRadius, 0, 30, function (val) {
-                _this.lowPassRadius = val;
+            // Add low-pass frequency input
+            secFrequencies.addParameter('Low-pass frequency', this.lowPassFrequency, 0, 30, function (val) {
+                _this.lowPassFrequency = val;
                 _this.updateLowPass();
                 _this.updateResult();
             });
-            // Add high-pass radius input
-            secFrequencies.addParameter('High-pass radius', this.highPassRadius, 0, 30, function (val) {
-                _this.highPassRadius = val;
+            // Add high-pass frequency input
+            secFrequencies.addParameter('High-pass frequency', this.highPassFrequency, 0, 30, function (val) {
+                _this.highPassFrequency = val;
                 _this.updateHighPass();
                 _this.updateResult();
             });
@@ -1147,8 +1234,8 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
          * @param {ImageData} imgB Second input image.
          */
         HybridGenerator.prototype.update = function (imgA, imgB) {
-            this.imgA = imgA,
-                this.imgB = imgB;
+            this.imgA = Filter.apply(imgA, Filter.grayscale),
+                this.imgB = Filter.apply(imgB, Filter.grayscale);
             this.updateLowPass();
             this.updateHighPass();
             this.updateResult();
@@ -1157,14 +1244,14 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
          * Updates low pass image.
          */
         HybridGenerator.prototype.updateLowPass = function () {
-            var lowPass = this.lowPass = Operation.lowPass(this.imgA, this.lowPassRadius);
+            var lowPass = this.lowPass = Operation.lowPass(this.imgA, this.lowPassFrequency);
             this.canvLowPass.drawImage(lowPass);
         };
         /**
          * Updates high pass image.
          */
         HybridGenerator.prototype.updateHighPass = function () {
-            var highPass = this.highPass = Operation.highPass(this.imgB, this.highPassRadius);
+            var highPass = this.highPass = Operation.highPass(this.imgB, this.highPassFrequency);
             this.canvHighPass.drawImage(highPass);
         };
         /**
@@ -1535,8 +1622,8 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
          * @param {ImageData} imgB Second input image.
          */
         MorphedGenerator.prototype.update = function (imgA, imgB) {
-            this.imgA = imgA,
-                this.imgB = imgB;
+            this.imgA = Filter.apply(imgA, Filter.grayscale),
+                this.imgB = Filter.apply(imgB, Filter.grayscale);
             this.morphEditor.updateSources(imgA, imgB);
             this.updateMorph();
             this.updateResult();
@@ -1573,13 +1660,11 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                 var morph = Filter.apply(morphs[i], Filter.grayscale), result = void 0;
                 if (i < (morphs.length - 1)) {
                     // Generate high-pass image
-                    // result = Operation.highPass(morph, passRadius * (i + 1));
                     var lowPass = void 0;
                     result = morph;
                     for (var j = 0; j < (i + 1); j++) {
                         lowPass = Operation.lowPass(morph, passRadius * (j + 1));
-                        result = Filter.apply(lowPass, Filter.subtract, morph);
-                        console.log('yo', i, j);
+                        result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
                         canv = new Canvas_2.default(result);
                         section.addItem(canv.element);
                     }
@@ -1601,8 +1686,8 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
          * Propogates result image to parent.
          */
         MorphedGenerator.prototype.updateResult = function () {
-            var result = Filter.apply(this.imgA, Filter.overlay, this.imgB);
-            this.onChange(result);
+            // let result:ImageData = Operation.hybridImage(this.imgA, this.imgB);
+            // this.onChange(result);
         };
         Object.defineProperty(MorphedGenerator.prototype, "element", {
             get: function () {
@@ -1715,7 +1800,7 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
                 this.update();
             }
             else {
-                this.showTab(this.tabMorphed);
+                this.showTab(this.tabOriginal);
             }
         };
         /**
