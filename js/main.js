@@ -1,56 +1,4 @@
 /**
- * Canvas
- * Wrapper for canvas element.
- */
-define("Canvas", ["require", "exports"], function (require, exports) {
-    "use strict";
-    var Canvas = (function () {
-        /**
-         * @param {ImageData} img Image to display.
-         * @param {boolean} isSmall Display a smaller canvas.
-         */
-        function Canvas(img, isSmall) {
-            if (isSmall === void 0) { isSmall = false; }
-            var ele = this.ele = document.createElement('canvas');
-            this.context = ele.getContext('2d');
-            ele.className = 'canvas' + ((isSmall) ? ' canvas--small' : '');
-            if (img) {
-                this.drawImage(img);
-            }
-        }
-        /**
-         * Draws an image.
-         * @param {ImageData} img Image buffer.
-         */
-        Canvas.prototype.drawImage = function (img) {
-            var c = this.context, width = this.element.width = img.width, height = this.element.height = img.height;
-            c.putImageData(img, 0, 0);
-        };
-        /**
-         * Resets the canvas.
-         */
-        Canvas.prototype.reset = function () {
-            this.context.clearRect(0, 0, this.width, this.height);
-        };
-        Object.defineProperty(Canvas.prototype, "element", {
-            get: function () {
-                return this.ele;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        return Canvas;
-    }());
-    Object.defineProperty(exports, "__esModule", { value: true });
-    exports.default = Canvas;
-});
-/**
- * Generator
- */
-define("Generator", ["require", "exports"], function (require, exports) {
-    "use strict";
-});
-/**
  * Helper
  * A set of helper functions.
  */
@@ -116,6 +64,75 @@ define("Helper", ["require", "exports"], function (require, exports) {
         return c.getImageData(0, 0, width, height);
     }
     exports.getImageData = getImageData;
+});
+/**
+ * Canvas
+ * Wrapper for canvas element.
+ */
+define("Canvas", ["require", "exports", "Helper"], function (require, exports, Helper) {
+    "use strict";
+    var Canvas = (function () {
+        /**
+         * @param {ImageData} img Image to display.
+         * @param {boolean} isSmall Display a smaller canvas.
+         */
+        function Canvas(img, isPreview) {
+            var _this = this;
+            if (isPreview === void 0) { isPreview = false; }
+            var ele = this.ele = document.createElement('canvas');
+            this.context = ele.getContext('2d');
+            ele.className = 'canvas' + (isPreview ? ' canvas--preview' : '');
+            if (img) {
+                this.drawImage(img);
+            }
+            if (isPreview) {
+                // Add ability to drag and change its size
+                var isDragging = false, startX_1, startWidth_1, onDrag_1 = function (event) {
+                    var dx = event.x - startX_1;
+                    ele.style.maxWidth = Helper.clamp(startWidth_1 + dx, 0, _this.width).toString() + 'px';
+                }, onRelease_1 = function (event) {
+                    window.removeEventListener('mousemove', onDrag_1);
+                    window.removeEventListener('mouseup', onRelease_1);
+                };
+                ele.addEventListener('mousedown', function (event) {
+                    startX_1 = event.x;
+                    startWidth_1 = parseInt(window.getComputedStyle(ele).maxWidth);
+                    window.addEventListener('mousemove', onDrag_1);
+                    window.addEventListener('mouseup', onRelease_1);
+                });
+            }
+        }
+        /**
+         * Draws an image.
+         * @param {ImageData} img Image buffer.
+         */
+        Canvas.prototype.drawImage = function (img) {
+            var c = this.context, width = this.width = this.ele.width = img.width, height = this.width = this.ele.height = img.height;
+            c.putImageData(img, 0, 0);
+        };
+        /**
+         * Resets the canvas.
+         */
+        Canvas.prototype.reset = function () {
+            this.context.clearRect(0, 0, this.width, this.height);
+        };
+        Object.defineProperty(Canvas.prototype, "element", {
+            get: function () {
+                return this.ele;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return Canvas;
+    }());
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.default = Canvas;
+});
+/**
+ * Generator
+ */
+define("Generator", ["require", "exports"], function (require, exports) {
+    "use strict";
 });
 /**
  * Filter
@@ -348,6 +365,16 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
         return { r: r, g: g, b: b };
     }
     exports.dissolve = dissolve;
+    /**
+     * Adds a pixel value from two sources.
+     * @param {boolean} shiftValue Shifts value by subtracting 0.5.
+     */
+    function addDissolve(x, y, srcA, srcB, intensity) {
+        if (intensity === void 0) { intensity = 1; }
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = (rA) + (intensity * (rB - 128)), g = (gA) + (intensity * (gB - 128)), b = (bA) + (intensity * (bB - 128));
+        return { r: r, g: g, b: b };
+    }
+    exports.addDissolve = addDissolve;
 });
 /*
     StackBlur - a fast almost Gaussian Blur For Canvas
@@ -857,6 +884,15 @@ define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], fun
         return Filter.apply(lowPass, Filter.add, highPass, true);
     }
     exports.hybridImage = hybridImage;
+    /**
+     * Returns an hybrid image synthesized from a low-pass and a high-pass image.
+     * @param {ImageData} lowPass Low-pass image.
+     * @param {ImageData} highPass High-pass image.
+     */
+    function hybridImage2(lowPass, highPass, intensity) {
+        return Filter.apply(lowPass, Filter.addDissolve, highPass, intensity);
+    }
+    exports.hybridImage2 = hybridImage2;
 });
 /**
  * Section
@@ -1190,8 +1226,8 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Filter", "Operation"
             this.onChange = onChange;
             this.canvLowPass = new Canvas_1.default();
             this.canvHighPass = new Canvas_1.default();
-            this.lowPassFrequency = 4;
-            this.highPassFrequency = 2;
+            this.lowPassFrequency = 8;
+            this.highPassFrequency = 5;
             var ele = this.ele = document.createElement('div'), secFrequencies = this.secFrequencies = new Section_1.default('Low/High Frequency Images');
             // Add low-pass frequency input
             secFrequencies.addParameter('Low-pass frequency', this.lowPassFrequency, 0, 30, function (val) {
@@ -1420,7 +1456,10 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
                     _this.updateCanvas();
                 }
             };
-            canv.onmouseup = function (event) {
+            canv.onmouseup = function () {
+                isMouseDown = false;
+            };
+            canv.onmouseout = function () {
                 isMouseDown = false;
             };
         };
@@ -1525,7 +1564,8 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var _this = this;
             this.onChange = onChange;
             this.morphSteps = 5;
-            this.passRadius = 3;
+            this.lowPassCutoff = 12;
+            this.cutoffPerPass = 6;
             var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morph Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), secFrequencies = this.secFrequencies = new Section_2.default('Frequency Images'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateExportData.bind(this));
             // Morph editor section
             secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
@@ -1539,8 +1579,12 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             });
             secMorph.addButton('Update', this.updateMorph.bind(this));
             // Frequency images section
-            secFrequencies.addParameter('Radius per step', this.passRadius, 0, 30, function (val) {
-                _this.passRadius = val;
+            secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 0, 30, function (val) {
+                _this.lowPassCutoff = val;
+                _this.updateFrequencyImages();
+            });
+            secFrequencies.addParameter('Cutoff per step', this.cutoffPerPass, 0, 30, function (val) {
+                _this.cutoffPerPass = val;
                 _this.updateFrequencyImages();
             });
             // Insert elements
@@ -1636,30 +1680,24 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
          * Updates the high and low frequency images from morphed images.
          */
         MorphedGenerator.prototype.updateFrequencyImages = function () {
-            var morphs = this.morphs, section = this.secFrequencies, passRadius = this.passRadius, canv, finalResult;
-            for (var i = (morphs.length - 1); i >= 0; i--) {
-                var morph = Filter.apply(morphs[i], Filter.grayscale), result = void 0;
-                if (i < (morphs.length - 1)) {
-                    // Generate high-pass image
-                    var lowPass = void 0;
-                    result = morph;
-                    for (var j = 0; j < (i + 1); j++) {
-                        lowPass = Operation.lowPass(morph, passRadius * (j + 1));
-                        result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
-                        canv = new Canvas_2.default(result);
-                        section.addItem(canv.element);
-                    }
-                    canv = new Canvas_2.default(result);
-                    section.addItem(canv.element);
-                    finalResult = Operation.hybridImage(finalResult, result);
+            var morphs = this.morphs.slice(0).reverse(), section = this.secFrequencies, passRadius = this.cutoffPerPass, canv, finalResult, morph, lowPass, result;
+            section.clearItems();
+            // Generate low-pass image
+            morph = Filter.apply(morphs[morphs.length - 1], Filter.grayscale),
+                result = Operation.lowPass(morph, this.lowPassCutoff);
+            canv = new Canvas_2.default(result);
+            section.addItem(canv.element);
+            finalResult = result;
+            for (var i = 0; i < (morphs.length - 1); i++) {
+                // Generate high-pass image
+                result = morph = Filter.apply(morphs[i], Filter.grayscale);
+                for (var j = 0; j < (i + 1); j++) {
+                    lowPass = Operation.lowPass(morph, passRadius * (j + 1));
+                    result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
                 }
-                else {
-                    // Generate low-pass image for the final image
-                    result = Operation.lowPass(morph, passRadius * (i + 1));
-                    canv = new Canvas_2.default(result);
-                    section.addItem(canv.element);
-                    finalResult = result;
-                }
+                canv = new Canvas_2.default(result);
+                section.addItem(canv.element);
+                finalResult = Operation.hybridImage2(finalResult, result, i * (1 / morphs.length));
             }
             this.onChange(finalResult);
         };
@@ -1694,7 +1732,7 @@ define("App", ["require", "exports", "Canvas", "Helper", "HybridGenerator", "Mor
             this.countTotal = 2;
             this.tabOriginal = 'Original';
             this.tabMorphed = 'Morphed Image';
-            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input Images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
+            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input Images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result', 'Drag image to resize.'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
             // Sections wrap
             ele.className = 'sections';
             // Input section
@@ -1707,6 +1745,7 @@ define("App", ["require", "exports", "Canvas", "Helper", "HybridGenerator", "Mor
             // Method section
             this.tabsMethod = secMethod.addTabGroup([this.tabOriginal, this.tabMorphed], this.showTab.bind(this));
             // Result section
+            canvResultSmall.element.style.maxWidth = '48px';
             secResult.addItem(canvResult.element);
             secResult.addItem(canvResultSmall.element);
             this.btnSaveImage = secResult.addDownload('Save Image', '', 'result.png');
