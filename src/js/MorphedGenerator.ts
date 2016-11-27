@@ -23,7 +23,8 @@ export default class MorphedGenerator implements Generator {
     private morphEditor:MorphEditor;
     private morpher:ImgWarper.Animator;
     private btnExport:any;
-    private passRadius:number = 3;
+    private lowPassCutoff:number = 12;
+    private cutoffPerPass:number = 6;
 
     /**
      * @param {Function} onChange Event handler for intermediary image changes.
@@ -46,8 +47,12 @@ export default class MorphedGenerator implements Generator {
 		});
         secMorph.addButton('Update', this.updateMorph.bind(this));
         // Frequency images section
-        secFrequencies.addParameter('Radius per step', this.passRadius, 0, 30, (val) => {
-            this.passRadius = val;
+        secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 0, 30, (val) => {
+            this.lowPassCutoff = val;
+            this.updateFrequencyImages();
+		});
+        secFrequencies.addParameter('Cutoff per step', this.cutoffPerPass, 0, 30, (val) => {
+            this.cutoffPerPass = val;
             this.updateFrequencyImages();
 		});
         // Insert elements
@@ -156,34 +161,31 @@ export default class MorphedGenerator implements Generator {
      * Updates the high and low frequency images from morphed images.
      */
     updateFrequencyImages() {
-        let morphs:ImageData[] = this.morphs,
+        let morphs:ImageData[] = this.morphs.slice(0).reverse(),
             section:Section = this.secFrequencies,
-            passRadius:number = this.passRadius,
+            passRadius:number = this.cutoffPerPass,
             canv:Canvas,
-            finalResult:ImageData;
-        for (let i = (morphs.length - 1); i >= 0; i--) {
-            let morph = Filter.apply(morphs[i], Filter.grayscale),
-                result:ImageData;
-            if (i < (morphs.length - 1)) {
-                // Generate high-pass image
-                let lowPass:ImageData;
-                result = morph;
-                for (let j = 0; j < (i + 1); j++) {
-                    lowPass = Operation.lowPass(morph, passRadius * (j + 1)); 
-                    result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
-                    canv = new Canvas(result);
-                    section.addItem(canv.element);
-                }
-                canv = new Canvas(result);
-                section.addItem(canv.element);
-                finalResult = Operation.hybridImage(finalResult, result);
-            } else {
-                // Generate low-pass image for the final image
-                result = Operation.lowPass(morph, passRadius * (i + 1));
-                canv = new Canvas(result);
-                section.addItem(canv.element);
-                finalResult = result;
+            finalResult:ImageData,
+            morph:ImageData,
+            lowPass:ImageData,
+            result:ImageData;
+        section.clearItems();
+        // Generate low-pass image
+        morph = Filter.apply(morphs[morphs.length - 1], Filter.grayscale),
+        result = Operation.lowPass(morph, this.lowPassCutoff);
+        canv = new Canvas(result);
+        section.addItem(canv.element);
+        finalResult = result;
+        for (let i = 0; i < (morphs.length - 1); i++) {
+            // Generate high-pass image
+            result = morph = Filter.apply(morphs[i], Filter.grayscale);
+            for (let j = 0; j < (i + 1); j++) {
+                lowPass = Operation.lowPass(morph, passRadius * (j + 1));
+                result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
             }
+            canv = new Canvas(result);
+            section.addItem(canv.element);
+            finalResult = Operation.hybridImage2(finalResult, result, i * (1 / morphs.length));
         }
         this.onChange(finalResult);
     }

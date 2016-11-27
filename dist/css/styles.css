@@ -166,8 +166,8 @@ a {
   max-width: 12.5rem;
   height: auto; }
 
-.canvas--small {
-  max-width: 3rem; }
+.canvas--preview {
+  cursor: ew-resize; }
 
 .tab-section {
   display: none; }

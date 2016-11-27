@@ -275,3 +275,16 @@ export function dissolve(x:number, y:number, srcA:ImageData, srcB:ImageData, int
         b:number = (bA * intensity) + ((1 - intensity) * bB);
     return {r, g, b};
 }
+
+/**
+ * Adds a pixel value from two sources.
+ * @param {boolean} shiftValue Shifts value by subtracting 0.5.
+ */
+export function addDissolve(x:number, y:number, srcA:ImageData, srcB:ImageData, intensity:number = 1) {
+    let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
+        {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
+        r:number = (rA) + (intensity * (rB - 128)),
+        g:number = (gA) + (intensity * (gB - 128)),
+        b:number = (bA) + (intensity * (bB - 128));
+    return {r, g, b};
+}
