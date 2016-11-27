@@ -4,20 +4,8 @@
  */
 
 import * as Filter from './Filter';
+import * as Helper from './Helper'; 
 import * as StackBlur from './StackBlur';
-
-/**
- * Returns the image buffer from an image element.
- * @param {HTMLImageElement} img Image element.
- */
-export function getImageData(img:HTMLImageElement):ImageData {
-    let canvas:HTMLCanvasElement = document.createElement('canvas'),
-        c:CanvasRenderingContext2D = canvas.getContext('2d'),
-        width:number = canvas.width = img.naturalWidth,
-        height:number = canvas.height = img.naturalHeight;
-    c.drawImage(img, 0, 0);
-    return c.getImageData(0, 0, width, height);
-}
 
 /**
  * Returns an image buffer under a low-pass (blur) filter.
@@ -25,7 +13,8 @@ export function getImageData(img:HTMLImageElement):ImageData {
  * @param {number} cutoff Cut-off frequency.
  */
 export function lowPass(img:ImageData, cutoff:number):ImageData {
-    return Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
+    let copy = Helper.cloneImageData(img);
+    return StackBlur.imageDataRGB(copy, 0, 0, img.width, img.height, cutoff);
 }
 
 /**
@@ -34,7 +23,8 @@ export function lowPass(img:ImageData, cutoff:number):ImageData {
  * @param {number} cutoff Cut-off frequency.
  */
 export function highPass(img:ImageData, cutoff?:number):ImageData {
-    let lowPass = Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
+    let copy = Helper.cloneImageData(img),
+        lowPass = StackBlur.imageDataRGB(copy, 0, 0, img.width, img.height, cutoff);
     return Filter.apply(img, Filter.subtract, lowPass, false, true);
 }
 

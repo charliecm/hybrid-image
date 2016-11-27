@@ -33,11 +33,10 @@ export function apply(src:ImageData, operation:Function, ...params):ImageData {
 }
 
 /**
- * Applies a filter to a source image.
- * https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
+ * Performs a convolution filter.
+ * TODO: Implement a faster convolution algorithm.
  * @param {ImageData} src Source image buffer.
- * @param {Function} operation Filter operation to perform.
- * @param {arguments} params Parameters to pass into operation function.
+ * @param {number[][]} matrix Matrix to apply.
  */
 export function applyConvolve(src:ImageData, matrix:number[][]):ImageData {
     let width:number = src.width,
@@ -58,7 +57,7 @@ export function applyConvolve(src:ImageData, matrix:number[][]):ImageData {
             let {r, g, b} = this.getRGB(src, srcX, srcY);
             marginBuf32[destX + destY * marginWidth] = (255 << 24) | (b << 16) | (g << 8) | r;
         };
-    // Fill corners
+    // Mirror corners
     for (let x:number = 0; x < marginX; x++) {
         for (let y:number = 0; y < marginY; y++) {
             setMarginRGB(marginY - y, marginX - x, x, y);
@@ -67,14 +66,14 @@ export function applyConvolve(src:ImageData, matrix:number[][]):ImageData {
             setMarginRGB(y, height - 1 - marginY + x, x, y + marginHeight - marginY);
         }
     }
-    // Fill horizontal margins
+    // Mirror horizontal margins
     for (let x:number = marginX; x < (marginWidth - marginX); x++) {
         for (let y:number = 0; y < marginY; y++) {
             setMarginRGB(x - marginX, marginY - y, x, y);
             setMarginRGB(x - marginX, height - 1 - y, x, y + marginHeight - marginY);
         }
     }
-    // Fill vertical margins
+    // Mirror vertical margins
     for (let x:number = 0; x < marginX; x++) {
         for (let y:number = marginY; y < (marginHeight - marginY); y++) {
             setMarginRGB(marginX - x, y - marginY, x, y);
@@ -82,6 +81,7 @@ export function applyConvolve(src:ImageData, matrix:number[][]):ImageData {
         }
     }
     margin.data.set(marginBuf8);
+    // Perform convolution
     for (let x:number = 0; x < width; x++) {
         for (let y:number = 0; y < height; y++) {
             let r:number = 0,
@@ -110,6 +110,31 @@ export function applyConvolve(src:ImageData, matrix:number[][]):ImageData {
     }
     result.data.set(resultBuf8);
     return result;
+}
+
+/**
+ * Returns a custom gaussian convoultion matrix.
+ * From http://stackoverflow.com/questions/8204645/implementing-gaussian-blur-how-to-calculate-convolution-matrix-kernel.
+ */
+export function getGaussianMatrix(hsize:number = 3, sigma:number = 1):number[][] {
+    let kernel:number[][] = [],
+        mean:number = hsize / 2,
+        sum:number = 0,
+        x:number, y:number;
+    for (x = 0; x < hsize; x++) {
+        kernel[x] = [];
+        for (y = 0; y < hsize; y++) {
+            kernel[x][y] = Math.exp(-0.5 * (Math.pow((x - mean) / sigma, 2.0) + Math.pow((y - mean) / sigma, 2.0)) / (2 * Math.PI * sigma * sigma));
+            sum += kernel[x][y];
+        }
+    }
+    // Normalize the kernel
+    for (x = 0; x < hsize; ++x) {
+        for (y = 0; y < hsize; ++y) {
+            kernel[x][y] /= sum;
+        }
+    }
+    return kernel;
 }
 
 /**
@@ -170,42 +195,6 @@ export function invert(x:number, y:number, src:ImageData) {
     r = 255 - r;
     g = 255 - g;
     b = 255 - b;
-    return {r, g, b};
-}
-
-/**
- * Performs a convolution on a pixel.
- * @param {number[][]} matrix Matrix to apply.
- * @param {boolean} shiftValues Shifts output value to the middle.
- */
-export function convolve(x:number, y:number, src:ImageData, matrix:number[][], shiftValues:boolean = false) {
-    let r:number = 0,
-        g:number = 0,
-        b:number = 0,
-        radiusX = Math.floor(matrix[0].length / 2),
-        radiusY = Math.floor(matrix.length / 2);
-    for (let relX:number = -radiusX; relX <= radiusX; relX++) {
-        for (let relY:number = -radiusY; relY <= radiusY; relY++) {
-            let xx = x + relX,
-                yy = y + relY;
-            if (xx < 0 || xx >= src.width || yy < 0 || yy >= src.height) {
-                continue;
-            }
-            let multiplier = matrix[relX + radiusX][relY + radiusY],
-                {r:relR, g:relG, b:relB} = this.getRGB(src, xx, yy);
-            relR *= multiplier;
-            relG *= multiplier;
-            relB *= multiplier;
-            r += relR;
-            g += relG;
-            b += relB;
-        }
-    }
-    if (shiftValues) {
-        r += 128;
-        g += 128;
-        b += 128;
-    }
     return {r, g, b};
 }
 
@@ -285,29 +274,4 @@ export function dissolve(x:number, y:number, srcA:ImageData, srcB:ImageData, int
         g:number = (gA * intensity) + ((1 - intensity) * gB),
         b:number = (bA * intensity) + ((1 - intensity) * bB);
     return {r, g, b};
-}
-
-/**
- * Returns a custom gaussian convoultion matrix.
- * From http://stackoverflow.com/questions/8204645/implementing-gaussian-blur-how-to-calculate-convolution-matrix-kernel.
- */
-export function getGaussianMatrix(hsize:number = 3, sigma:number = 1):number[][] {
-    let kernel:number[][] = [],
-        mean:number = hsize / 2,
-        sum:number = 0,
-        x:number, y:number;
-    for (x = 0; x < hsize; x++) {
-        kernel[x] = [];
-        for (y = 0; y < hsize; y++) {
-            kernel[x][y] = Math.exp(-0.5 * (Math.pow((x - mean) / sigma, 2.0) + Math.pow((y - mean) / sigma, 2.0)) / (2 * Math.PI * sigma * sigma));
-            sum += kernel[x][y];
-        }
-    }
-    // Normalize the kernel
-    for (x = 0; x < hsize; ++x) {
-        for (y = 0; y < hsize; ++y) {
-            kernel[x][y] /= sum;
-        }
-    }
-    return kernel;
 }

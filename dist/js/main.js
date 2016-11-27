@@ -95,6 +95,27 @@ define("Helper", ["require", "exports"], function (require, exports) {
         };
     }
     exports.debounce = debounce;
+    /**
+     * Returns a cloned ImageData instance.
+     * @param {ImageData} src Original image data.
+     * @return {ImageData} Cloned image data.
+     */
+    function cloneImageData(src) {
+        var dest = new ImageData(src.width, src.height), copy = new Uint8ClampedArray(src.data);
+        dest.data.set(copy);
+        return dest;
+    }
+    exports.cloneImageData = cloneImageData;
+    /**
+     * Returns the image buffer from an image element.
+     * @param {HTMLImageElement} img Image element.
+     */
+    function getImageData(img) {
+        var canvas = document.createElement('canvas'), c = canvas.getContext('2d'), width = canvas.width = img.naturalWidth, height = canvas.height = img.naturalHeight;
+        c.drawImage(img, 0, 0);
+        return c.getImageData(0, 0, width, height);
+    }
+    exports.getImageData = getImageData;
 });
 /**
  * Filter
@@ -129,11 +150,10 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
     }
     exports.apply = apply;
     /**
-     * Applies a filter to a source image.
-     * https://hacks.mozilla.org/2011/12/faster-canvas-pixel-manipulation-with-typed-arrays/
+     * Performs a convolution filter.
+     * TODO: Implement a faster convolution algorithm.
      * @param {ImageData} src Source image buffer.
-     * @param {Function} operation Filter operation to perform.
-     * @param {arguments} params Parameters to pass into operation function.
+     * @param {number[][]} matrix Matrix to apply.
      */
     function applyConvolve(src, matrix) {
         var _this = this;
@@ -141,7 +161,7 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
             var _a = _this.getRGB(src, srcX, srcY), r = _a.r, g = _a.g, b = _a.b;
             marginBuf32[destX + destY * marginWidth] = (255 << 24) | (b << 16) | (g << 8) | r;
         };
-        // Fill corners
+        // Mirror corners
         for (var x = 0; x < marginX; x++) {
             for (var y = 0; y < marginY; y++) {
                 setMarginRGB(marginY - y, marginX - x, x, y);
@@ -150,14 +170,14 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
                 setMarginRGB(y, height - 1 - marginY + x, x, y + marginHeight - marginY);
             }
         }
-        // Fill horizontal margins
+        // Mirror horizontal margins
         for (var x = marginX; x < (marginWidth - marginX); x++) {
             for (var y = 0; y < marginY; y++) {
                 setMarginRGB(x - marginX, marginY - y, x, y);
                 setMarginRGB(x - marginX, height - 1 - y, x, y + marginHeight - marginY);
             }
         }
-        // Fill vertical margins
+        // Mirror vertical margins
         for (var x = 0; x < marginX; x++) {
             for (var y = marginY; y < (marginHeight - marginY); y++) {
                 setMarginRGB(marginX - x, y - marginY, x, y);
@@ -165,6 +185,7 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
             }
         }
         margin.data.set(marginBuf8);
+        // Perform convolution
         for (var x = 0; x < width; x++) {
             for (var y = 0; y < height; y++) {
                 var r = 0, g = 0, b = 0;
@@ -189,6 +210,30 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
         return result;
     }
     exports.applyConvolve = applyConvolve;
+    /**
+     * Returns a custom gaussian convoultion matrix.
+     * From http://stackoverflow.com/questions/8204645/implementing-gaussian-blur-how-to-calculate-convolution-matrix-kernel.
+     */
+    function getGaussianMatrix(hsize, sigma) {
+        if (hsize === void 0) { hsize = 3; }
+        if (sigma === void 0) { sigma = 1; }
+        var kernel = [], mean = hsize / 2, sum = 0, x, y;
+        for (x = 0; x < hsize; x++) {
+            kernel[x] = [];
+            for (y = 0; y < hsize; y++) {
+                kernel[x][y] = Math.exp(-0.5 * (Math.pow((x - mean) / sigma, 2.0) + Math.pow((y - mean) / sigma, 2.0)) / (2 * Math.PI * sigma * sigma));
+                sum += kernel[x][y];
+            }
+        }
+        // Normalize the kernel
+        for (x = 0; x < hsize; ++x) {
+            for (y = 0; y < hsize; ++y) {
+                kernel[x][y] /= sum;
+            }
+        }
+        return kernel;
+    }
+    exports.getGaussianMatrix = getGaussianMatrix;
     /**
      * Returns the RGBA data of a pixel.
      * @param {ImageData} src Source image.
@@ -250,37 +295,6 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
     }
     exports.invert = invert;
     /**
-     * Performs a convolution on a pixel.
-     * @param {number[][]} matrix Matrix to apply.
-     * @param {boolean} shiftValues Shifts output value to the middle.
-     */
-    function convolve(x, y, src, matrix, shiftValues) {
-        if (shiftValues === void 0) { shiftValues = false; }
-        var r = 0, g = 0, b = 0, radiusX = Math.floor(matrix[0].length / 2), radiusY = Math.floor(matrix.length / 2);
-        for (var relX = -radiusX; relX <= radiusX; relX++) {
-            for (var relY = -radiusY; relY <= radiusY; relY++) {
-                var xx = x + relX, yy = y + relY;
-                if (xx < 0 || xx >= src.width || yy < 0 || yy >= src.height) {
-                    continue;
-                }
-                var multiplier = matrix[relX + radiusX][relY + radiusY], _a = this.getRGB(src, xx, yy), relR = _a.r, relG = _a.g, relB = _a.b;
-                relR *= multiplier;
-                relG *= multiplier;
-                relB *= multiplier;
-                r += relR;
-                g += relG;
-                b += relB;
-            }
-        }
-        if (shiftValues) {
-            r += 128;
-            g += 128;
-            b += 128;
-        }
-        return { r: r, g: g, b: b };
-    }
-    exports.convolve = convolve;
-    /**
      * Adds a pixel value from two sources.
      * @param {boolean} shiftValue Shifts value by subtracting 0.5.
      */
@@ -334,30 +348,6 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
         return { r: r, g: g, b: b };
     }
     exports.dissolve = dissolve;
-    /**
-     * Returns a custom gaussian convoultion matrix.
-     * From http://stackoverflow.com/questions/8204645/implementing-gaussian-blur-how-to-calculate-convolution-matrix-kernel.
-     */
-    function getGaussianMatrix(hsize, sigma) {
-        if (hsize === void 0) { hsize = 3; }
-        if (sigma === void 0) { sigma = 1; }
-        var kernel = [], mean = hsize / 2, sum = 0, x, y;
-        for (x = 0; x < hsize; x++) {
-            kernel[x] = [];
-            for (y = 0; y < hsize; y++) {
-                kernel[x][y] = Math.exp(-0.5 * (Math.pow((x - mean) / sigma, 2.0) + Math.pow((y - mean) / sigma, 2.0)) / (2 * Math.PI * sigma * sigma));
-                sum += kernel[x][y];
-            }
-        }
-        // Normalize the kernel
-        for (x = 0; x < hsize; ++x) {
-            for (y = 0; y < hsize; ++y) {
-                kernel[x][y] /= sum;
-            }
-        }
-        return kernel;
-    }
-    exports.getGaussianMatrix = getGaussianMatrix;
 });
 /*
     StackBlur - a fast almost Gaussian Blur For Canvas
@@ -836,25 +826,16 @@ define("StackBlur", ["require", "exports"], function (require, exports) {
  * Operation
  * Image manipulation operations.
  */
-define("Operation", ["require", "exports", "Filter"], function (require, exports, Filter) {
+define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], function (require, exports, Filter, Helper, StackBlur) {
     "use strict";
-    /**
-     * Returns the image buffer from an image element.
-     * @param {HTMLImageElement} img Image element.
-     */
-    function getImageData(img) {
-        var canvas = document.createElement('canvas'), c = canvas.getContext('2d'), width = canvas.width = img.naturalWidth, height = canvas.height = img.naturalHeight;
-        c.drawImage(img, 0, 0);
-        return c.getImageData(0, 0, width, height);
-    }
-    exports.getImageData = getImageData;
     /**
      * Returns an image buffer under a low-pass (blur) filter.
      * @param {ImageData} img Image buffer.
      * @param {number} cutoff Cut-off frequency.
      */
     function lowPass(img, cutoff) {
-        return Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
+        var copy = Helper.cloneImageData(img);
+        return StackBlur.imageDataRGB(copy, 0, 0, img.width, img.height, cutoff);
     }
     exports.lowPass = lowPass;
     /**
@@ -863,7 +844,7 @@ define("Operation", ["require", "exports", "Filter"], function (require, exports
      * @param {number} cutoff Cut-off frequency.
      */
     function highPass(img, cutoff) {
-        var lowPass = Filter.applyConvolve(img, Filter.getGaussianMatrix(cutoff * 4 + 1, cutoff));
+        var copy = Helper.cloneImageData(img), lowPass = StackBlur.imageDataRGB(copy, 0, 0, img.width, img.height, cutoff);
         return Filter.apply(img, Filter.subtract, lowPass, false, true);
     }
     exports.highPass = highPass;
@@ -1705,7 +1686,7 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
  * HybridGenerator
  * Displays the hybrid image generator UI.
  */
-define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenerator", "Operation", "Section"], function (require, exports, Canvas_3, HybridGenerator_1, MorphedGenerator_1, Operation, Section_3) {
+define("App", ["require", "exports", "Canvas", "Helper", "HybridGenerator", "MorphedGenerator", "Section"], function (require, exports, Canvas_3, Helper, HybridGenerator_1, MorphedGenerator_1, Section_3) {
     "use strict";
     var App = (function () {
         function App(parent) {
@@ -1763,7 +1744,7 @@ define("App", ["require", "exports", "Canvas", "HybridGenerator", "MorphedGenera
          * Updates the UI.
          */
         App.prototype.update = function () {
-            this.activeGenerator.update(Operation.getImageData(this.imgA), Operation.getImageData(this.imgB));
+            this.activeGenerator.update(Helper.getImageData(this.imgA), Helper.getImageData(this.imgB));
         };
         /**
          * Updates the result image.

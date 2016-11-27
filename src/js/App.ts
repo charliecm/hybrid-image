@@ -5,6 +5,7 @@
 
 import Canvas from './Canvas';
 import Generator from './Generator';
+import * as Helper from './Helper';
 import HybridGenerator from './HybridGenerator';
 import MorphedGenerator from './MorphedGenerator';
 import * as Operation from './Operation';
@@ -97,7 +98,7 @@ export default class App {
      * Updates the UI.
      */
     private update() {
-        this.activeGenerator.update(Operation.getImageData(this.imgA), Operation.getImageData(this.imgB));
+        this.activeGenerator.update(Helper.getImageData(this.imgA), Helper.getImageData(this.imgB));
     }
 
     /**
