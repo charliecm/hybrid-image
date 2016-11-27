@@ -94,7 +94,10 @@ export default class MorphEditor {
                 this.updateCanvas();
             }
         }
-        canv.onmouseup = (event) => {
+        canv.onmouseup = () => {
+            isMouseDown = false;
+        }
+        canv.onmouseout = () => {
             isMouseDown = false;
         }
     }

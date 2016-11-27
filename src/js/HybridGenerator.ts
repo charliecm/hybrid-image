@@ -19,8 +19,8 @@ export default class HybridGenerator implements Generator {
 	private secFrequencies:Section;
     private canvLowPass:Canvas = new Canvas();
     private canvHighPass:Canvas = new Canvas();
-    private lowPassFrequency:number = 4;
-    private highPassFrequency:number = 2;
+    private lowPassFrequency:number = 8;
+    private highPassFrequency:number = 5;
 
     /**
      * @param {Function} onChange Event handler for intermediary image changes.

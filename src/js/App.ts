@@ -43,7 +43,7 @@ export default class App {
             canvResultSmall = this.canvResultSmall = new Canvas(null, true),
             secInput:Section = this.secInputs = new Section('Input Images', 'Please select two images with the same width and height.'),
             secMethod:Section = this.secMethod = new Section('Method', 'Choose which method to generate a hybrid image with.', false),
-			secResult:Section = this.secResult = new Section('Result'),
+			secResult:Section = this.secResult = new Section('Result', 'Drag image to resize.'),
             genHybrid = this.genHybrid = new HybridGenerator(this.updateResult.bind(this)),
             genMorphed = this.genMorphed = new MorphedGenerator(this.updateResult.bind(this)),
             eleHybridTab = this.eleHybridTab = genHybrid.element,
@@ -60,6 +60,7 @@ export default class App {
         // Method section
         this.tabsMethod = secMethod.addTabGroup([ this.tabOriginal, this.tabMorphed ], this.showTab.bind(this));
         // Result section
+        canvResultSmall.element.style.maxWidth = '48px';
         secResult.addItem(canvResult.element);
         secResult.addItem(canvResultSmall.element);
         this.btnSaveImage = secResult.addDownload('Save Image', '', 'result.png');
