@@ -307,23 +307,23 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
     exports.invert = invert;
     /**
      * Adds a pixel value from two sources.
-     * @param {boolean} shiftValue Shifts value by subtracting 0.5.
+     * @param {number} shiftValue Shift value.
      */
     function add(x, y, srcA, srcB, shiftValue) {
-        if (shiftValue === void 0) { shiftValue = false; }
-        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = rA + rB - ((shiftValue) ? 128 : 0), g = gA + gB - ((shiftValue) ? 128 : 0), b = bA + bB - ((shiftValue) ? 128 : 0);
+        if (shiftValue === void 0) { shiftValue = 0; }
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = rA + rB - shiftValue, g = gA + gB - shiftValue, b = bA + bB - shiftValue;
         return { r: r, g: g, b: b };
     }
     exports.add = add;
     /**
      * Subtracts a pixel value symmetrically from two sources.
      * @param {boolean} isSymmetrical Perform symmetrical subtraction (absolute value).
-     * @param {boolean} shiftValue Shifts value by adding 0.5.
+     * @param {number} shiftValue Shift value.
      */
     function subtract(x, y, srcA, srcB, isSymmetrical, shiftValue) {
         if (isSymmetrical === void 0) { isSymmetrical = true; }
-        if (shiftValue === void 0) { shiftValue = false; }
-        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = ((isSymmetrical) ? Math.abs(rA - rB) : rA - rB) + ((shiftValue) ? 128 : 0), g = ((isSymmetrical) ? Math.abs(gA - gB) : gA - gB) + ((shiftValue) ? 128 : 0), b = ((isSymmetrical) ? Math.abs(bA - bB) : bA - bB) + ((shiftValue) ? 128 : 0);
+        if (shiftValue === void 0) { shiftValue = 0; }
+        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = ((isSymmetrical) ? Math.abs(rA - rB) : rA - rB) + shiftValue, g = ((isSymmetrical) ? Math.abs(gA - gB) : gA - gB) + shiftValue, b = ((isSymmetrical) ? Math.abs(bA - bB) : bA - bB) + shiftValue;
         return { r: r, g: g, b: b };
     }
     exports.subtract = subtract;
@@ -872,7 +872,7 @@ define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], fun
      */
     function highPass(img, cutoff) {
         var copy = Helper.cloneImageData(img), lowPass = StackBlur.imageDataRGB(copy, 0, 0, img.width, img.height, cutoff);
-        return Filter.apply(img, Filter.subtract, lowPass, false, true);
+        return Filter.apply(img, Filter.subtract, lowPass, false, 128);
     }
     exports.highPass = highPass;
     /**
@@ -881,7 +881,7 @@ define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], fun
      * @param {ImageData} highPass High-pass image.
      */
     function hybridImage(lowPass, highPass) {
-        return Filter.apply(lowPass, Filter.overlay, highPass, true);
+        return Filter.apply(lowPass, Filter.overlay, highPass);
     }
     exports.hybridImage = hybridImage;
     /**
@@ -890,7 +890,7 @@ define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], fun
      * @param {ImageData} highPass High-pass image.
      */
     function hybridImage2(lowPass, highPass, intensity) {
-        return Filter.apply(lowPass, Filter.addDissolve, highPass, intensity);
+        return Filter.apply(lowPass, Filter.overlay, highPass); //, intensity);
     }
     exports.hybridImage2 = hybridImage2;
 });
@@ -1725,7 +1725,7 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                 result = morph = Filter.apply(morphs[i], Filter.grayscale);
                 for (var j = 0; j < (i + 1); j++) {
                     lowPass = Operation.lowPass(morph, passRadius * (j + 1));
-                    result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
+                    result = Filter.apply(lowPass, Filter.subtract, morph, false, 128);
                 }
                 canv = new Canvas_2.default(result);
                 section.addItem(canv.element);
@@ -1765,13 +1765,18 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
             this.countTotal = 2;
             this.tabOriginal = 'Original';
             this.tabMorphed = 'Morphed Image';
+            this.demoAimgA = 'images/daniel-radcliffe.png';
+            this.demoAimgB = 'images/elijah-wood.png';
+            this.demoBimgA = 'images/einstein.jpg';
+            this.demoBimgB = 'images/monroe.jpg';
             var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input Images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result', 'Drag image to resize.'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
             // Sections wrap
             ele.className = 'sections';
             // Input section
             secInput.addUpload('Upload', this.handleUpload.bind(this), true);
             secInput.addButton('Swap Images', this.swap.bind(this));
-            secInput.addButton('Reset to Demo', this.showDemo.bind(this));
+            secInput.addButton('Show Demo A', this.showDemo.bind(this, this.demoAimgA, this.demoAimgB));
+            secInput.addButton('Show Demo B', this.showDemo.bind(this, this.demoBimgA, this.demoBimgB));
             secInput.addCheckbox('Monochrome', this.toggleMonochrome.bind(this), this.isMonochrome);
             imgA.className = imgB.className = 'canvas';
             secInput.addItem(imgA);
@@ -1792,7 +1797,7 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
             ele.appendChild(eleBody);
             ele.appendChild(secResult.element);
             parent.appendChild(ele);
-            this.showDemo();
+            this.showDemo(this.demoAimgA, this.demoAimgB);
         }
         /**
          * Shows the specified method tab.
@@ -1911,13 +1916,13 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
         /**
          * Shows the output of demo input images.
          */
-        App.prototype.showDemo = function () {
+        App.prototype.showDemo = function (srcA, srcB) {
             this.reset();
             var secInput = this.secInputs, imgA = this.imgA, imgB = this.imgB;
             imgA.onload = this.checkImages.bind(this);
-            imgA.src = 'images/daniel-radcliffe.png';
+            imgA.src = srcA;
             imgB.onload = this.checkImages.bind(this);
-            imgB.src = 'images/elijah-wood.png';
+            imgB.src = srcB;
         };
         /**
          * Toggles whether the input images should be monochrome.
