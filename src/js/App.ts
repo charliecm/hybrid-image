@@ -35,6 +35,10 @@ export default class App {
     private readonly countTotal:number = 2;
     private readonly tabOriginal:string = 'Original';
     private readonly tabMorphed:string = 'Morphed Image';
+    private readonly demoAimgA = 'images/daniel-radcliffe.png';
+    private readonly demoAimgB = 'images/elijah-wood.png';
+    private readonly demoBimgA = 'images/einstein.jpg';
+    private readonly demoBimgB = 'images/monroe.jpg';
 
 	constructor(parent:HTMLElement) {
         let ele:HTMLElement = this.ele = document.createElement('article'),
@@ -55,7 +59,8 @@ export default class App {
         // Input section
         secInput.addUpload('Upload', this.handleUpload.bind(this), true);
 		secInput.addButton('Swap Images', this.swap.bind(this));
-        secInput.addButton('Reset to Demo', this.showDemo.bind(this));
+        secInput.addButton('Show Demo A', this.showDemo.bind(this, this.demoAimgA, this.demoAimgB));
+        secInput.addButton('Show Demo B', this.showDemo.bind(this, this.demoBimgA, this.demoBimgB));
         secInput.addCheckbox('Monochrome', this.toggleMonochrome.bind(this), this.isMonochrome);
         imgA.className = imgB.className = 'canvas';
         secInput.addItem(imgA);
@@ -76,7 +81,7 @@ export default class App {
         ele.appendChild(eleBody);
         ele.appendChild(secResult.element);
 		parent.appendChild(ele);
-        this.showDemo();
+        this.showDemo(this.demoAimgA, this.demoAimgB);
 	}
 
     /**
@@ -209,15 +214,15 @@ export default class App {
     /**
      * Shows the output of demo input images.
      */
-	showDemo() {
+	showDemo(srcA:string, srcB:string) {
         this.reset();
 		let secInput = this.secInputs,
 			imgA = this.imgA,
 			imgB = this.imgB;
         imgA.onload = this.checkImages.bind(this);
-		imgA.src = 'images/daniel-radcliffe.png';
+		imgA.src = srcA;
 		imgB.onload = this.checkImages.bind(this);
-		imgB.src = 'images/elijah-wood.png';
+		imgB.src = srcB;
 	}
 
     /**

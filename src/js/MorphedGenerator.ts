@@ -181,7 +181,7 @@ export default class MorphedGenerator implements Generator {
             result = morph = Filter.apply(morphs[i], Filter.grayscale);
             for (let j = 0; j < (i + 1); j++) {
                 lowPass = Operation.lowPass(morph, passRadius * (j + 1));
-                result = Filter.apply(lowPass, Filter.subtract, morph, false, true);
+                result = Filter.apply(lowPass, Filter.subtract, morph, false, 128);
             }
             canv = new Canvas(result);
             section.addItem(canv.element);

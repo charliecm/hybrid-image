@@ -200,28 +200,28 @@ export function invert(x:number, y:number, src:ImageData) {
 
 /**
  * Adds a pixel value from two sources.
- * @param {boolean} shiftValue Shifts value by subtracting 0.5.
+ * @param {number} shiftValue Shift value.
  */
-export function add(x:number, y:number, srcA:ImageData, srcB:ImageData, shiftValue:boolean = false) {
+export function add(x:number, y:number, srcA:ImageData, srcB:ImageData, shiftValue:number = 0) {
     let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
         {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
-        r:number = rA + rB - ((shiftValue) ? 128 : 0),
-        g:number = gA + gB - ((shiftValue) ? 128 : 0),
-        b:number = bA + bB - ((shiftValue) ? 128 : 0);
+        r:number = rA + rB - shiftValue,
+        g:number = gA + gB - shiftValue,
+        b:number = bA + bB - shiftValue;
     return {r, g, b};
 }
 
 /**
  * Subtracts a pixel value symmetrically from two sources.
  * @param {boolean} isSymmetrical Perform symmetrical subtraction (absolute value).
- * @param {boolean} shiftValue Shifts value by adding 0.5.
+ * @param {number} shiftValue Shift value.
  */
-export function subtract(x:number, y:number, srcA:ImageData, srcB:ImageData, isSymmetrical:boolean = true, shiftValue:boolean = false) {
+export function subtract(x:number, y:number, srcA:ImageData, srcB:ImageData, isSymmetrical:boolean = true, shiftValue:number = 0) {
     let {r:rA, g:gA, b:bA} = this.getRGB(srcA, x, y),
         {r:rB, g:gB, b:bB} = this.getRGB(srcB, x, y),
-        r:number = ((isSymmetrical) ? Math.abs(rA - rB) : rA - rB) + ((shiftValue) ? 128 : 0),
-        g:number = ((isSymmetrical) ? Math.abs(gA - gB) : gA - gB) + ((shiftValue) ? 128 : 0),
-        b:number = ((isSymmetrical) ? Math.abs(bA - bB) : bA - bB) + ((shiftValue) ? 128 : 0);
+        r:number = ((isSymmetrical) ? Math.abs(rA - rB) : rA - rB) + shiftValue,
+        g:number = ((isSymmetrical) ? Math.abs(gA - gB) : gA - gB) + shiftValue,
+        b:number = ((isSymmetrical) ? Math.abs(bA - bB) : bA - bB) + shiftValue;
     return {r, g, b};
 }
 

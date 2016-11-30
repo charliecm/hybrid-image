@@ -25,7 +25,7 @@ export function lowPass(img:ImageData, cutoff:number):ImageData {
 export function highPass(img:ImageData, cutoff?:number):ImageData {
     let copy = Helper.cloneImageData(img),
         lowPass = StackBlur.imageDataRGB(copy, 0, 0, img.width, img.height, cutoff);
-    return Filter.apply(img, Filter.subtract, lowPass, false, true);
+    return Filter.apply(img, Filter.subtract, lowPass, false, 128);
 }
 
 /**
@@ -34,7 +34,7 @@ export function highPass(img:ImageData, cutoff?:number):ImageData {
  * @param {ImageData} highPass High-pass image.
  */
 export function hybridImage(lowPass:ImageData, highPass:ImageData):ImageData {
-    return Filter.apply(lowPass, Filter.overlay, highPass, true);
+    return Filter.apply(lowPass, Filter.overlay, highPass);
 }
 
 /**
@@ -43,5 +43,5 @@ export function hybridImage(lowPass:ImageData, highPass:ImageData):ImageData {
  * @param {ImageData} highPass High-pass image.
  */
 export function hybridImage2(lowPass:ImageData, highPass:ImageData, intensity:number):ImageData {
-    return Filter.apply(lowPass, Filter.addDissolve, highPass, intensity);
+    return Filter.apply(lowPass, Filter.overlay, highPass); //, intensity);
 }
