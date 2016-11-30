@@ -29,13 +29,13 @@ export default class HybridGenerator implements Generator {
         let ele = this.ele = document.createElement('div'),
             secFrequencies:Section = this.secFrequencies = new Section('Low/High Frequency Images');
         // Add low-pass frequency input
-		secFrequencies.addParameter('Low-pass frequency', this.lowPassFrequency, 0, 30, (val) => {
+		secFrequencies.addParameter('Low-pass frequency', this.lowPassFrequency, 0, 100, (val) => {
             this.lowPassFrequency = val;
             this.updateLowPass();
             this.updateResult();
 		});
         // Add high-pass frequency input
-		secFrequencies.addParameter('High-pass frequency', this.highPassFrequency, 0, 30, (val) => {
+		secFrequencies.addParameter('High-pass frequency', this.highPassFrequency, 0, 100, (val) => {
             this.highPassFrequency = val;
 			this.updateHighPass();
             this.updateResult();

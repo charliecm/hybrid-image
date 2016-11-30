@@ -1262,13 +1262,13 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section
             this.highPassFrequency = 5;
             var ele = this.ele = document.createElement('div'), secFrequencies = this.secFrequencies = new Section_1.default('Low/High Frequency Images');
             // Add low-pass frequency input
-            secFrequencies.addParameter('Low-pass frequency', this.lowPassFrequency, 0, 30, function (val) {
+            secFrequencies.addParameter('Low-pass frequency', this.lowPassFrequency, 0, 100, function (val) {
                 _this.lowPassFrequency = val;
                 _this.updateLowPass();
                 _this.updateResult();
             });
             // Add high-pass frequency input
-            secFrequencies.addParameter('High-pass frequency', this.highPassFrequency, 0, 30, function (val) {
+            secFrequencies.addParameter('High-pass frequency', this.highPassFrequency, 0, 100, function (val) {
                 _this.highPassFrequency = val;
                 _this.updateHighPass();
                 _this.updateResult();
@@ -1632,11 +1632,11 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                 _this.updateResult();
             });
             // Frequency images section
-            secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 0, 30, function (val) {
+            secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 1, 100, function (val) {
                 _this.lowPassCutoff = val;
                 _this.updateFrequencyImages();
             });
-            secFrequencies.addParameter('Cutoff per step', this.cutoffPerPass, 0, 30, function (val) {
+            secFrequencies.addParameter('Cutoff per step', this.cutoffPerPass, 1, 100, function (val) {
                 _this.cutoffPerPass = val;
                 _this.updateFrequencyImages();
             });
@@ -1748,15 +1748,15 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var morphs = this.morphs.slice(0).reverse(), section = this.secFrequencies, passRadius = this.cutoffPerPass, canv, finalResult, morph, lowPass, result;
             section.clearItems();
             // Generate low-pass image
-            morph = Filter.apply(morphs[morphs.length - 1], Filter.grayscale),
-                result = Operation.lowPass(morph, this.lowPassCutoff);
+            morph = morphs[morphs.length - 1];
+            result = Operation.lowPass(morph, this.lowPassCutoff);
             canv = new Canvas_2.default(result);
             section.addItem(canv.element);
             finalResult = result;
             for (var i = 0; i < (morphs.length - 1); i++) {
                 // Generate high-pass image
-                result = morph = Filter.apply(morphs[i], Filter.grayscale);
-                for (var j = 0; j < (i + 1); j++) {
+                result = morph = morphs[i];
+                for (var j = 0; j < (morphs.length - i + 1); j++) {
                     lowPass = Operation.lowPass(morph, passRadius * (j + 1));
                     result = Filter.apply(lowPass, Filter.subtract, morph, false, 128);
                 }

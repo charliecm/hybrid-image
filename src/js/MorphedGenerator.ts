@@ -48,11 +48,11 @@ export default class MorphedGenerator implements Generator {
             this.updateResult();
 		});
         // Frequency images section
-        secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 0, 30, (val) => {
+        secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 1, 100, (val) => {
             this.lowPassCutoff = val;
             this.updateFrequencyImages();
 		});
-        secFrequencies.addParameter('Cutoff per step', this.cutoffPerPass, 0, 30, (val) => {
+        secFrequencies.addParameter('Cutoff per step', this.cutoffPerPass, 1, 100, (val) => {
             this.cutoffPerPass = val;
             this.updateFrequencyImages();
 		});
@@ -184,15 +184,15 @@ export default class MorphedGenerator implements Generator {
             result:ImageData;
         section.clearItems();
         // Generate low-pass image
-        morph = Filter.apply(morphs[morphs.length - 1], Filter.grayscale),
+        morph = morphs[morphs.length - 1];
         result = Operation.lowPass(morph, this.lowPassCutoff);
         canv = new Canvas(result);
         section.addItem(canv.element);
         finalResult = result;
         for (let i = 0; i < (morphs.length - 1); i++) {
             // Generate high-pass image
-            result = morph = Filter.apply(morphs[i], Filter.grayscale);
-            for (let j = 0; j < (i + 1); j++) {
+            result = morph = morphs[i];
+            for (let j = 0; j < (morphs.length - i + 1); j++) {
                 lowPass = Operation.lowPass(morph, passRadius * (j + 1));
                 result = Filter.apply(lowPass, Filter.subtract, morph, false, 128);
             }
