@@ -337,6 +337,42 @@ export default class Section {
 	}
 
 	/**
+	 * Adds a checkbox button to the control bar.
+	 * @param {string} label Label of the checkbox.
+	 * @param {EventListenerOrEventListenerObject} onChange Event handler for toggle.
+	 * @param {boolean} isChecked Whether checkbox is checked by default.
+	 */
+	addCheckbox(label:string, onChange:EventListenerOrEventListenerObject, isChecked:boolean = false) {
+		let ele:HTMLLabelElement = document.createElement('label'),
+			eleInput:HTMLInputElement = document.createElement('input'),
+			eleLabel:HTMLSpanElement = document.createElement('span'),
+			destroy:Function = () => {
+				eleInput.removeEventListener('change', onChange);
+				ele.parentNode.removeChild(ele);
+			},
+			instance = {
+				element: ele,
+				label,
+				destroy
+			};
+		// Container
+		ele.className = 'control';
+		// Input
+		eleInput.className = 'control__checkbox';
+		eleInput.type = 'checkbox';
+		eleInput.checked = isChecked;
+		eleInput.addEventListener('change', onChange);
+		ele.appendChild(eleInput);
+		// Label
+		eleLabel.textContent = label;
+		eleLabel.className = 'control__label';
+		ele.appendChild(eleLabel);
+		// Add to DOM and model
+		this.addControl(instance);
+		return instance;
+	}
+
+	/**
 	 * Cleans up and removes the section from document.
 	 */
 	destroy() {

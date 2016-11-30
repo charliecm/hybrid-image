@@ -4,6 +4,7 @@
  */
 
 import Canvas from './Canvas';
+import * as Filter from './Filter';
 import Generator from './Generator';
 import * as Helper from './Helper';
 import HybridGenerator from './HybridGenerator';
@@ -30,6 +31,7 @@ export default class App {
     private genMorphed:MorphedGenerator;
     private activeGenerator:Generator;
     private count:number = 0;
+    private isMonochrome:boolean = true;
     private readonly countTotal:number = 2;
     private readonly tabOriginal:string = 'Original';
     private readonly tabMorphed:string = 'Morphed Image';
@@ -54,6 +56,7 @@ export default class App {
         secInput.addUpload('Upload', this.handleUpload.bind(this), true);
 		secInput.addButton('Swap Images', this.swap.bind(this));
         secInput.addButton('Reset to Demo', this.showDemo.bind(this));
+        secInput.addCheckbox('Monochrome', this.toggleMonochrome.bind(this), this.isMonochrome);
         imgA.className = imgB.className = 'canvas';
         secInput.addItem(imgA);
         secInput.addItem(imgB);
@@ -99,7 +102,11 @@ export default class App {
      * Updates the UI.
      */
     private update() {
-        this.activeGenerator.update(Helper.getImageData(this.imgA), Helper.getImageData(this.imgB));
+        let imgA = Helper.getImageData(this.imgA),
+            imgB = Helper.getImageData(this.imgB),
+            dataA = (this.isMonochrome) ? Filter.apply(imgA, Filter.grayscale) : imgA,
+            dataB = (this.isMonochrome) ? Filter.apply(imgB, Filter.grayscale) : imgB;
+        this.activeGenerator.update(dataA, dataB);
     }
 
     /**
@@ -212,6 +219,14 @@ export default class App {
 		imgB.onload = this.checkImages.bind(this);
 		imgB.src = 'images/elijah-wood.png';
 	}
+
+    /**
+     * Toggles whether the input images should be monochrome.
+     */
+    toggleMonochrome(event:Event) {
+        this.isMonochrome = (<(HTMLInputElement)>event.target).checked;
+        this.update();
+    }
 
     /**
      * Resets the result images.

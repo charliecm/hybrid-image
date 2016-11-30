@@ -51,8 +51,8 @@ export default class HybridGenerator implements Generator {
      * @param {ImageData} imgB Second input image.
      */
     update(imgA:ImageData, imgB:ImageData) {
-        this.imgA = Filter.apply(imgA, Filter.grayscale),
-        this.imgB = Filter.apply(imgB, Filter.grayscale);
+        this.imgA = imgA,
+        this.imgB = imgB;
         this.updateLowPass();
         this.updateHighPass();
         this.updateResult();

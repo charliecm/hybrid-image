@@ -34,7 +34,7 @@ export function highPass(img:ImageData, cutoff?:number):ImageData {
  * @param {ImageData} highPass High-pass image.
  */
 export function hybridImage(lowPass:ImageData, highPass:ImageData):ImageData {
-    return Filter.apply(lowPass, Filter.add, highPass, true);
+    return Filter.apply(lowPass, Filter.overlay, highPass, true);
 }
 
 /**
