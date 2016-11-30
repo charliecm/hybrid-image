@@ -129,12 +129,6 @@ define("Canvas", ["require", "exports", "Helper"], function (require, exports, H
     exports.default = Canvas;
 });
 /**
- * Generator
- */
-define("Generator", ["require", "exports"], function (require, exports) {
-    "use strict";
-});
-/**
  * Filter
  * Image manipulation filters.
  */
@@ -375,6 +369,12 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
         return { r: r, g: g, b: b };
     }
     exports.addDissolve = addDissolve;
+});
+/**
+ * Generator
+ */
+define("Generator", ["require", "exports"], function (require, exports) {
+    "use strict";
 });
 /*
     StackBlur - a fast almost Gaussian Blur For Canvas
@@ -881,7 +881,7 @@ define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], fun
      * @param {ImageData} highPass High-pass image.
      */
     function hybridImage(lowPass, highPass) {
-        return Filter.apply(lowPass, Filter.add, highPass, true);
+        return Filter.apply(lowPass, Filter.overlay, highPass, true);
     }
     exports.hybridImage = hybridImage;
     /**
@@ -1180,6 +1180,38 @@ define("Section", ["require", "exports", "Helper"], function (require, exports, 
             return instance;
         };
         /**
+         * Adds a checkbox button to the control bar.
+         * @param {string} label Label of the checkbox.
+         * @param {EventListenerOrEventListenerObject} onChange Event handler for toggle.
+         * @param {boolean} isChecked Whether checkbox is checked by default.
+         */
+        Section.prototype.addCheckbox = function (label, onChange, isChecked) {
+            if (isChecked === void 0) { isChecked = false; }
+            var ele = document.createElement('label'), eleInput = document.createElement('input'), eleLabel = document.createElement('span'), destroy = function () {
+                eleInput.removeEventListener('change', onChange);
+                ele.parentNode.removeChild(ele);
+            }, instance = {
+                element: ele,
+                label: label,
+                destroy: destroy
+            };
+            // Container
+            ele.className = 'control';
+            // Input
+            eleInput.className = 'control__checkbox';
+            eleInput.type = 'checkbox';
+            eleInput.checked = isChecked;
+            eleInput.addEventListener('change', onChange);
+            ele.appendChild(eleInput);
+            // Label
+            eleLabel.textContent = label;
+            eleLabel.className = 'control__label';
+            ele.appendChild(eleLabel);
+            // Add to DOM and model
+            this.addControl(instance);
+            return instance;
+        };
+        /**
          * Cleans up and removes the section from document.
          */
         Section.prototype.destroy = function () {
@@ -1215,7 +1247,7 @@ define("Section", ["require", "exports", "Helper"], function (require, exports, 
  * HybridGenerator
  * Displays the hybrid image generator UI.
  */
-define("HybridGenerator", ["require", "exports", "Canvas", "Filter", "Operation", "Section"], function (require, exports, Canvas_1, Filter, Operation, Section_1) {
+define("HybridGenerator", ["require", "exports", "Canvas", "Operation", "Section"], function (require, exports, Canvas_1, Operation, Section_1) {
     "use strict";
     var HybridGenerator = (function () {
         /**
@@ -1251,8 +1283,8 @@ define("HybridGenerator", ["require", "exports", "Canvas", "Filter", "Operation"
          * @param {ImageData} imgB Second input image.
          */
         HybridGenerator.prototype.update = function (imgA, imgB) {
-            this.imgA = Filter.apply(imgA, Filter.grayscale),
-                this.imgB = Filter.apply(imgB, Filter.grayscale);
+            this.imgA = imgA,
+                this.imgB = imgB;
             this.updateLowPass();
             this.updateHighPass();
             this.updateResult();
@@ -1647,8 +1679,8 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
          * @param {ImageData} imgB Second input image.
          */
         MorphedGenerator.prototype.update = function (imgA, imgB) {
-            this.imgA = Filter.apply(imgA, Filter.grayscale),
-                this.imgB = Filter.apply(imgB, Filter.grayscale);
+            this.imgA = imgA,
+                this.imgB = imgB;
             this.morphEditor.updateSources(imgA, imgB);
             this.updateMorph();
             this.updateResult();
@@ -1724,11 +1756,12 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
  * HybridGenerator
  * Displays the hybrid image generator UI.
  */
-define("App", ["require", "exports", "Canvas", "Helper", "HybridGenerator", "MorphedGenerator", "Section"], function (require, exports, Canvas_3, Helper, HybridGenerator_1, MorphedGenerator_1, Section_3) {
+define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenerator", "MorphedGenerator", "Section"], function (require, exports, Canvas_3, Filter, Helper, HybridGenerator_1, MorphedGenerator_1, Section_3) {
     "use strict";
     var App = (function () {
         function App(parent) {
             this.count = 0;
+            this.isMonochrome = true;
             this.countTotal = 2;
             this.tabOriginal = 'Original';
             this.tabMorphed = 'Morphed Image';
@@ -1739,6 +1772,7 @@ define("App", ["require", "exports", "Canvas", "Helper", "HybridGenerator", "Mor
             secInput.addUpload('Upload', this.handleUpload.bind(this), true);
             secInput.addButton('Swap Images', this.swap.bind(this));
             secInput.addButton('Reset to Demo', this.showDemo.bind(this));
+            secInput.addCheckbox('Monochrome', this.toggleMonochrome.bind(this), this.isMonochrome);
             imgA.className = imgB.className = 'canvas';
             secInput.addItem(imgA);
             secInput.addItem(imgB);
@@ -1783,7 +1817,8 @@ define("App", ["require", "exports", "Canvas", "Helper", "HybridGenerator", "Mor
          * Updates the UI.
          */
         App.prototype.update = function () {
-            this.activeGenerator.update(Helper.getImageData(this.imgA), Helper.getImageData(this.imgB));
+            var imgA = Helper.getImageData(this.imgA), imgB = Helper.getImageData(this.imgB), dataA = (this.isMonochrome) ? Filter.apply(imgA, Filter.grayscale) : imgA, dataB = (this.isMonochrome) ? Filter.apply(imgB, Filter.grayscale) : imgB;
+            this.activeGenerator.update(dataA, dataB);
         };
         /**
          * Updates the result image.
@@ -1883,6 +1918,13 @@ define("App", ["require", "exports", "Canvas", "Helper", "HybridGenerator", "Mor
             imgA.src = 'images/daniel-radcliffe.png';
             imgB.onload = this.checkImages.bind(this);
             imgB.src = 'images/elijah-wood.png';
+        };
+        /**
+         * Toggles whether the input images should be monochrome.
+         */
+        App.prototype.toggleMonochrome = function (event) {
+            this.isMonochrome = event.target.checked;
+            this.update();
         };
         /**
          * Resets the result images.

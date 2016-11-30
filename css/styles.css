@@ -124,6 +124,13 @@ a {
     outline: 0;
     color: black; }
 
+.control__label {
+  line-height: 1.5rem;
+  font-size: 0.75rem; }
+
+.control__checkbox {
+  margin-right: 0.25rem; }
+
 .control__upload-wrap {
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25); }
   .control__upload-wrap span {
