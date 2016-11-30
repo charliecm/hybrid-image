@@ -3,7 +3,7 @@
  */
 
 interface Generator {
-    update(imgA:ImageData, imgB:ImageData);
+    update(imgA:ImageData, imgB:ImageData, isSwapped:boolean);
     element;
 }
 

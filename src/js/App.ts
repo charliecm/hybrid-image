@@ -105,13 +105,14 @@ export default class App {
 
     /**
      * Updates the UI.
+     * @param {boolean} isSwap Signal whether the images have been swapped.
      */
-    private update() {
+    private update(isSwap:boolean = false) {
         let imgA = Helper.getImageData(this.imgA),
             imgB = Helper.getImageData(this.imgB),
             dataA = (this.isMonochrome) ? Filter.apply(imgA, Filter.grayscale) : imgA,
             dataB = (this.isMonochrome) ? Filter.apply(imgB, Filter.grayscale) : imgB;
-        this.activeGenerator.update(dataA, dataB);
+        this.activeGenerator.update(dataA, dataB, isSwap);
     }
 
     /**
@@ -151,7 +152,7 @@ export default class App {
         if (this.activeGenerator) {
             this.update();
         } else {
-            this.showTab(this.tabOriginal);
+            this.showTab(this.tabMorphed);
         }
     }
 
@@ -208,7 +209,7 @@ export default class App {
             tempB:string = this.imgB.src;
         this.imgA.src = tempB;
         this.imgB.src = tempA;
-        this.update();
+        this.update(true);
     }
 
     /**

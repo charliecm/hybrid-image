@@ -37,15 +37,16 @@ export default class MorphedGenerator implements Generator {
             morphEditor:MorphEditor = this.morphEditor = new MorphEditor(this.updateExportData.bind(this));
         // Morph editor section
         secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
+        secMorphEditor.addButton('Swap', this.swapPoints.bind(this));
         secMorphEditor.addUpload('Import', this.importPoints.bind(this));
         this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
         // Morphed images section
+        secMorph.addButton('Update', this.updateMorph.bind(this));
 		secMorph.addParameter('Steps', this.morphSteps, 1, 10, (val) => {
             this.morphSteps = val;
             this.updateMorph();
             this.updateResult();
 		});
-        secMorph.addButton('Update', this.updateMorph.bind(this));
         // Frequency images section
         secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 0, 30, (val) => {
             this.lowPassCutoff = val;
@@ -106,6 +107,13 @@ export default class MorphedGenerator implements Generator {
     }
 
     /**
+     * Swaps all control points.
+     */
+    private swapPoints() {
+        this.morphEditor.swap();
+    }
+
+    /**
      * Removes all control points.
      */
     private clearPoints() {
@@ -116,19 +124,23 @@ export default class MorphedGenerator implements Generator {
      * Updates intermediary images from input images.
      * @param {ImageData} imgA First input image.
      * @param {ImageData} imgB Second input image.
+     * @param {boolean} isSwapped Whether to swap control points or not.
      */
-    update(imgA:ImageData, imgB:ImageData) {
+    update(imgA:ImageData, imgB:ImageData, isSwapped:boolean = false) {
         this.imgA = imgA,
         this.imgB = imgB;
+        if (isSwapped) {
+            this.morphEditor.swap();
+        }
         this.morphEditor.updateSources(imgA, imgB);
-        this.updateMorph();
         this.updateResult();
     }
 
     /**
      * Updates intermediary morphed images.
+     * @return {boolean} Whether the morphed images were successfully created.
      */
-    updateMorph() {
+    updateMorph():boolean {
         let steps:number = this.morphSteps,
             secMorph:Section = this.secMorph,
             morphs:ImageData[] = this.morphs = [],
@@ -145,7 +157,7 @@ export default class MorphedGenerator implements Generator {
             );
         secMorph.clearItems();
         if (!points.a.length) {
-            return;
+            return false;
         }
         morpher.generate(steps + 1);
         for (let i = 0; i < morpher.frames.length; i++) {
@@ -155,6 +167,7 @@ export default class MorphedGenerator implements Generator {
             morphs.push(result);
         }
         this.updateFrequencyImages();
+        return true;
     }
 
     /**
@@ -185,17 +198,20 @@ export default class MorphedGenerator implements Generator {
             }
             canv = new Canvas(result);
             section.addItem(canv.element);
-            finalResult = Operation.hybridImage2(finalResult, result, i * (1 / morphs.length));
+            finalResult = Operation.hybridImage(finalResult, result);
         }
         this.onChange(finalResult);
+        return finalResult
     }
     
     /**
      * Propogates result image to parent.
      */
     private updateResult() {
-        // let result:ImageData = Operation.hybridImage(this.imgA, this.imgB);
-        // this.onChange(result);
+        if (!this.updateMorph()) {
+            let result:ImageData = new ImageData(this.imgA.width, this.imgB.height);
+            this.onChange(result);
+        }
     }
 
     get element() {

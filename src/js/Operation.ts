@@ -43,5 +43,5 @@ export function hybridImage(lowPass:ImageData, highPass:ImageData):ImageData {
  * @param {ImageData} highPass High-pass image.
  */
 export function hybridImage2(lowPass:ImageData, highPass:ImageData, intensity:number):ImageData {
-    return Filter.apply(lowPass, Filter.overlay, highPass); //, intensity);
+    return Filter.apply(lowPass, Filter.overlayDissolve, highPass, intensity);
 }

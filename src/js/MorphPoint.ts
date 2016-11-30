@@ -38,6 +38,18 @@ export default class MorphPoint {
     }
 
     /**
+     * Swap control point coordinates.
+     */
+    swap() {
+        let tempX = this.xA,
+            tempY = this.yA;
+        this.xA = this.xB;
+        this.yA = this.yB;
+        this.xB = tempX;
+        this.yB = tempY;
+    }
+
+    /**
      * Draws the point on a canvas.
      * @param {boolean} isA Draw point A, otherwise point B.
      * @param {CanvasRenderingContext2D} c Canvas rendering context.

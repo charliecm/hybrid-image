@@ -145,6 +145,17 @@ export default class MorphEditor {
     }
 
     /**
+     * Swaps all control point pairs.
+     */
+    swap() {
+        let points = this.points;
+        for (let i = 0; i < points.length; i++) {
+            points[i].swap();
+        }
+        this.updateCanvas();
+    }
+
+    /**
      * Removes all the points.
      */
     clear() {
