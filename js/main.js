@@ -890,7 +890,7 @@ define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], fun
      * @param {ImageData} highPass High-pass image.
      */
     function hybridImage2(lowPass, highPass, intensity) {
-        return Filter.apply(lowPass, Filter.overlay, highPass); //, intensity);
+        return Filter.apply(lowPass, Filter.overlayDissolve, highPass, intensity);
     }
     exports.hybridImage2 = hybridImage2;
 });
@@ -1356,6 +1356,16 @@ define("MorphPoint", ["require", "exports"], function (require, exports) {
             }
         };
         /**
+         * Swap control point coordinates.
+         */
+        MorphPoint.prototype.swap = function () {
+            var tempX = this.xA, tempY = this.yA;
+            this.xA = this.xB;
+            this.yA = this.yB;
+            this.xB = tempX;
+            this.yB = tempY;
+        };
+        /**
          * Draws the point on a canvas.
          * @param {boolean} isA Draw point A, otherwise point B.
          * @param {CanvasRenderingContext2D} c Canvas rendering context.
@@ -1531,6 +1541,16 @@ define("MorphEditor", ["require", "exports", "MorphPoint"], function (require, e
             this.updateCanvas();
         };
         /**
+         * Swaps all control point pairs.
+         */
+        MorphEditor.prototype.swap = function () {
+            var points = this.points;
+            for (var i = 0; i < points.length; i++) {
+                points[i].swap();
+            }
+            this.updateCanvas();
+        };
+        /**
          * Removes all the points.
          */
         MorphEditor.prototype.clear = function () {
@@ -1601,15 +1621,16 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             var ele = this.ele = document.createElement('div'), secMorphEditor = this.secMorphEditor = new Section_2.default('Morph Editor', 'Click to add a control point. Drag to move one. Press DEL to remove the selected point.'), secMorph = this.secMorph = new Section_2.default('Morphed Images', 'Add control points using the above editor, then press Update.'), secFrequencies = this.secFrequencies = new Section_2.default('Frequency Images'), morphEditor = this.morphEditor = new MorphEditor_1.default(this.updateExportData.bind(this));
             // Morph editor section
             secMorphEditor.addButton('Clear', this.clearPoints.bind(this));
+            secMorphEditor.addButton('Swap', this.swapPoints.bind(this));
             secMorphEditor.addUpload('Import', this.importPoints.bind(this));
             this.btnExport = secMorphEditor.addDownload('Export', '', 'points.json');
             // Morphed images section
+            secMorph.addButton('Update', this.updateMorph.bind(this));
             secMorph.addParameter('Steps', this.morphSteps, 1, 10, function (val) {
                 _this.morphSteps = val;
                 _this.updateMorph();
                 _this.updateResult();
             });
-            secMorph.addButton('Update', this.updateMorph.bind(this));
             // Frequency images section
             secFrequencies.addParameter('Low frequency cutoff', this.lowPassCutoff, 0, 30, function (val) {
                 _this.lowPassCutoff = val;
@@ -1668,6 +1689,12 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             reader.readAsText(files[0]);
         };
         /**
+         * Swaps all control points.
+         */
+        MorphedGenerator.prototype.swapPoints = function () {
+            this.morphEditor.swap();
+        };
+        /**
          * Removes all control points.
          */
         MorphedGenerator.prototype.clearPoints = function () {
@@ -1677,16 +1704,21 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
          * Updates intermediary images from input images.
          * @param {ImageData} imgA First input image.
          * @param {ImageData} imgB Second input image.
+         * @param {boolean} isSwapped Whether to swap control points or not.
          */
-        MorphedGenerator.prototype.update = function (imgA, imgB) {
+        MorphedGenerator.prototype.update = function (imgA, imgB, isSwapped) {
+            if (isSwapped === void 0) { isSwapped = false; }
             this.imgA = imgA,
                 this.imgB = imgB;
+            if (isSwapped) {
+                this.morphEditor.swap();
+            }
             this.morphEditor.updateSources(imgA, imgB);
-            this.updateMorph();
             this.updateResult();
         };
         /**
          * Updates intermediary morphed images.
+         * @return {boolean} Whether the morphed images were successfully created.
          */
         MorphedGenerator.prototype.updateMorph = function () {
             var steps = this.morphSteps, secMorph = this.secMorph, morphs = this.morphs = [], points = this.morphEditor.getPoints(), morpher = this.morpher = new ImgWarper.Animator({
@@ -1698,7 +1730,7 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
             });
             secMorph.clearItems();
             if (!points.a.length) {
-                return;
+                return false;
             }
             morpher.generate(steps + 1);
             for (var i = 0; i < morpher.frames.length; i++) {
@@ -1707,6 +1739,7 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                 morphs.push(result);
             }
             this.updateFrequencyImages();
+            return true;
         };
         /**
          * Updates the high and low frequency images from morphed images.
@@ -1729,16 +1762,19 @@ define("MorphedGenerator", ["require", "exports", "Canvas", "Filter", "MorphEdit
                 }
                 canv = new Canvas_2.default(result);
                 section.addItem(canv.element);
-                finalResult = Operation.hybridImage2(finalResult, result, i * (1 / morphs.length));
+                finalResult = Operation.hybridImage(finalResult, result);
             }
             this.onChange(finalResult);
+            return finalResult;
         };
         /**
          * Propogates result image to parent.
          */
         MorphedGenerator.prototype.updateResult = function () {
-            // let result:ImageData = Operation.hybridImage(this.imgA, this.imgB);
-            // this.onChange(result);
+            if (!this.updateMorph()) {
+                var result = new ImageData(this.imgA.width, this.imgB.height);
+                this.onChange(result);
+            }
         };
         Object.defineProperty(MorphedGenerator.prototype, "element", {
             get: function () {
@@ -1820,10 +1856,12 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
         };
         /**
          * Updates the UI.
+         * @param {boolean} isSwap Signal whether the images have been swapped.
          */
-        App.prototype.update = function () {
+        App.prototype.update = function (isSwap) {
+            if (isSwap === void 0) { isSwap = false; }
             var imgA = Helper.getImageData(this.imgA), imgB = Helper.getImageData(this.imgB), dataA = (this.isMonochrome) ? Filter.apply(imgA, Filter.grayscale) : imgA, dataB = (this.isMonochrome) ? Filter.apply(imgB, Filter.grayscale) : imgB;
-            this.activeGenerator.update(dataA, dataB);
+            this.activeGenerator.update(dataA, dataB, isSwap);
         };
         /**
          * Updates the result image.
@@ -1860,7 +1898,7 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
                 this.update();
             }
             else {
-                this.showTab(this.tabOriginal);
+                this.showTab(this.tabMorphed);
             }
         };
         /**
@@ -1911,7 +1949,7 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
             var tempA = this.imgA.src, tempB = this.imgB.src;
             this.imgA.src = tempB;
             this.imgB.src = tempA;
-            this.update();
+            this.update(true);
         };
         /**
          * Shows the output of demo input images.
