@@ -359,16 +359,6 @@ define("Filter", ["require", "exports", "Helper"], function (require, exports, H
         return { r: r, g: g, b: b };
     }
     exports.dissolve = dissolve;
-    /**
-     * Adds a pixel value from two sources.
-     * @param {boolean} shiftValue Shifts value by subtracting 0.5.
-     */
-    function addDissolve(x, y, srcA, srcB, intensity) {
-        if (intensity === void 0) { intensity = 1; }
-        var _a = this.getRGB(srcA, x, y), rA = _a.r, gA = _a.g, bA = _a.b, _b = this.getRGB(srcB, x, y), rB = _b.r, gB = _b.g, bB = _b.b, r = (rA) + (intensity * (rB - 128)), g = (gA) + (intensity * (gB - 128)), b = (bA) + (intensity * (bB - 128));
-        return { r: r, g: g, b: b };
-    }
-    exports.addDissolve = addDissolve;
 });
 /**
  * Generator
@@ -884,15 +874,6 @@ define("Operation", ["require", "exports", "Filter", "Helper", "StackBlur"], fun
         return Filter.apply(lowPass, Filter.overlay, highPass);
     }
     exports.hybridImage = hybridImage;
-    /**
-     * Returns an hybrid image synthesized from a low-pass and a high-pass image.
-     * @param {ImageData} lowPass Low-pass image.
-     * @param {ImageData} highPass High-pass image.
-     */
-    function hybridImage2(lowPass, highPass, intensity) {
-        return Filter.apply(lowPass, Filter.overlayDissolve, highPass, intensity);
-    }
-    exports.hybridImage2 = hybridImage2;
 });
 /**
  * Section
@@ -1805,7 +1786,7 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
             this.demoAimgB = 'images/elijah-wood.png';
             this.demoBimgA = 'images/einstein.jpg';
             this.demoBimgB = 'images/monroe.jpg';
-            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input Images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result', 'Drag image to resize.'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
+            var ele = this.ele = document.createElement('article'), eleBody = this.eleBody = document.createElement('div'), imgA = this.imgA = document.createElement('img'), imgB = this.imgB = document.createElement('img'), canvResult = this.canvResult = new Canvas_3.default(null, true), canvResultSmall = this.canvResultSmall = new Canvas_3.default(null, true), secInput = this.secInputs = new Section_3.default('Input Images', 'Please select two images with the same width and height.'), secMethod = this.secMethod = new Section_3.default('Method', 'Choose which method to generate a hybrid image with.', false), secResult = this.secResult = new Section_3.default('Result', 'Drag image to resize.'), genHybrid = this.genHybrid = new HybridGenerator_1.default(this.updateResult.bind(this)), genMorphed = this.genMorphed = new MorphedGenerator_1.default(this.updateResult.bind(this)), eleHybridTab = this.eleHybridTab = genHybrid.element, eleMorphedTab = this.eleMorphedTab = genMorphed.element;
             // Sections wrap
             ele.className = 'sections';
             // Input section
@@ -1898,7 +1879,7 @@ define("App", ["require", "exports", "Canvas", "Filter", "Helper", "HybridGenera
                 this.update();
             }
             else {
-                this.showTab(this.tabMorphed);
+                this.showTab(this.tabOriginal);
             }
         };
         /**
