@@ -36,12 +36,3 @@ export function highPass(img:ImageData, cutoff?:number):ImageData {
 export function hybridImage(lowPass:ImageData, highPass:ImageData):ImageData {
     return Filter.apply(lowPass, Filter.overlay, highPass);
 }
-
-/**
- * Returns an hybrid image synthesized from a low-pass and a high-pass image.
- * @param {ImageData} lowPass Low-pass image.
- * @param {ImageData} highPass High-pass image.
- */
-export function hybridImage2(lowPass:ImageData, highPass:ImageData, intensity:number):ImageData {
-    return Filter.apply(lowPass, Filter.overlayDissolve, highPass, intensity);
-}
